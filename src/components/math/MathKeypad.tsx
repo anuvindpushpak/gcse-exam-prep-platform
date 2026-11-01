@@ -29,20 +29,20 @@ const KEYPAD_BUTTONS: Array<{
 export function MathKeypad({ onInsert, onClear }: MathKeypadProps) {
   return (
     <div
-      className="rounded-xl border border-slate-200 bg-slate-50/90 p-2.5"
+      className="rounded-2xl border border-[#E8E4DB] bg-[#FAF9F5] p-3.5"
       aria-label="Mathematical symbol keypad"
     >
-      <div className="flex items-center justify-between mb-1.5 px-1">
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-          GCSE Math Input Keypad (Click to insert into active box)
+      <div className="flex items-center justify-between mb-2 px-1">
+        <span className="text-[11px] font-medium uppercase tracking-widest text-[#6E6B64]">
+          Mathematical Symbols
         </span>
         {onClear && (
           <button
             type="button"
             onClick={onClear}
-            className="text-xs font-medium text-slate-500 hover:text-rose-600 transition-colors"
+            className="text-xs font-medium text-[#6E6B64] hover:text-[#141413] transition-colors"
           >
-            Clear active box
+            Clear box
           </button>
         )}
       </div>
@@ -53,7 +53,7 @@ export function MathKeypad({ onInsert, onClear }: MathKeypadProps) {
             type="button"
             title={btn.hint}
             onClick={() => onInsert(btn.insert)}
-            className="flex items-center justify-center h-9 rounded-lg border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-800 shadow-sm hover:border-sky-500 hover:bg-sky-50 hover:text-sky-800 active:scale-95 transition-all"
+            className="flex items-center justify-center h-9 rounded-xl border border-[#E8E4DB] bg-white px-2 text-xs font-mono font-medium text-[#141413] hover:border-[#0F4C3A] hover:bg-[#E6F0EC] hover:text-[#0F4C3A] active:scale-95 transition-all"
           >
             {btn.label}
           </button>

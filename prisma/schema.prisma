@@ -274,3 +274,4 @@ model StudentRecommendation {
 
   student User @relation(fields: [studentId], references: [id])
 }
+

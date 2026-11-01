@@ -2,13 +2,9 @@
 
 import React, { useState } from "react";
 import {
-  AlertCircle,
   CheckCircle2,
   Cpu,
   FileCheck2,
-  Layers,
-  PlusCircle,
-  ShieldCheck,
   Sparkles,
   Trash2,
 } from "lucide-react";
@@ -21,7 +17,6 @@ export default function AdminAndAiGovernancePage() {
     topics,
     questions,
     products,
-    entitlements,
     generateAiDraft,
     updateQuestionStatus,
   } = usePlatform();
@@ -63,124 +58,69 @@ export default function AdminAndAiGovernancePage() {
       : questions.filter((q) => q.lifecycleStatus === statusFilter);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 space-y-8">
-      {/* Header */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <span className="text-xs font-bold uppercase tracking-wider text-sky-700">
-              Module 6 & 7 · Platform Administration & AI Governance
+    <div className="mx-auto max-w-6xl px-5 py-12 sm:px-8 space-y-12">
+      {/* Editorial Studio Header */}
+      <div className="rounded-3xl border border-[#E8E4DB] bg-white p-8 sm:p-10 shadow-sm">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-3">
+            <span className="text-xs font-semibold uppercase tracking-widest text-[#0F4C3A]">
+              Curator Studio · Content Engine & AI Governance
             </span>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900">
-              Content Engine CMS & 6-Agent AI Governance Studio
+            <h1 className="font-serif text-3xl sm:text-4xl font-semibold text-[#141413] tracking-tight">
+              Curriculum & Symbolic Validation Studio
             </h1>
-            <p className="text-xs sm:text-sm text-slate-600 max-w-3xl">
-              Strict lifecycle enforcement:{" "}
-              <strong>
-                AI Draft → Symbolic Math Validation (Agent 3) → Specialist Human
-                Approval → Published to Students
-              </strong>
-              . AI never publishes unverified educational content directly to
-              students.
+            <p className="text-sm sm:text-base text-[#575550] max-w-2xl leading-relaxed">
+              Every candidate question passes through{" "}
+              <strong className="font-semibold text-[#141413]">
+                AI Draft → Deterministic Symbolic Verification → Human
+                Specialist Approval
+              </strong>{" "}
+              before reaching students.
             </p>
           </div>
 
-          <div className="flex items-center gap-3 text-xs">
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2">
-              <div className="text-slate-500">Published Bank</div>
-              <div className="text-lg font-extrabold text-emerald-700">
-                {publishedQuestions.length} Qs
+          <div className="flex items-center gap-4">
+            <div className="rounded-2xl border border-[#E8E4DB] bg-[#FAF9F5] px-5 py-3.5">
+              <div className="text-xs text-[#78756E]">Published Bank</div>
+              <div className="font-serif text-2xl font-semibold text-[#0F4C3A]">
+                {publishedQuestions.length} Items
               </div>
             </div>
-            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2">
-              <div className="text-amber-800">Awaiting Review</div>
-              <div className="text-lg font-extrabold text-amber-900">
-                {pendingQuestions.length} Qs
+            <div className="rounded-2xl border border-[#E8E4DB] bg-[#FBF4EA] px-5 py-3.5">
+              <div className="text-xs text-[#9A5B13]">Awaiting Review</div>
+              <div className="font-serif text-2xl font-semibold text-[#9A5B13]">
+                {pendingQuestions.length} Items
               </div>
             </div>
           </div>
         </div>
-      </div>
-
-      {/* 6-Agent Pipeline Status Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {[
-          {
-            agent: "AI Agent 1: Curriculum & Specification Agent",
-            desc: "Maps Edexcel (1MA1), AQA (8300), and OCR (J560) specifications into topic & AO1/AO2/AO3 trees.",
-            badge: "3 Exam Boards Active",
-          },
-          {
-            agent: "AI Agent 2: Question & Variation Generator",
-            desc: "Produces original parameterized GCSE questions, M1/A1 step mark schemes, and declarative SVG diagrams.",
-            badge: "Parameterized Templates",
-          },
-          {
-            agent: "AI Agent 3: Symbolic Answer Validator",
-            desc: "Uses deterministic mathjs symbolic evaluation to verify roots, fractions, and step mark totals before review.",
-            badge: "100% Symbolic Guardrail",
-          },
-          {
-            agent: "AI Agent 4: Learning Explanation Agent",
-            desc: "Authors concise Grade 4 step-by-step worked solutions and targeted misconception coaching.",
-            badge: "Misconception Mapped",
-          },
-          {
-            agent: "AI Agent 5: Personalisation & Pathway Agent",
-            desc: "Ranks student topic deficits by exam syllabus weight to recommend the highest-ROI next practice set.",
-            badge: "Rule + Telemetry Driven",
-          },
-          {
-            agent: "AI Agent 6: Content QA & Coverage Auditor",
-            desc: "Audits Non-Calculator vs Calculator balance and flags duplicate or out-of-spec items.",
-            badge: "Zero Unreviewed Live Items",
-          },
-        ].map((item, i) => (
-          <div
-            key={i}
-            className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm space-y-2"
-          >
-            <div className="flex items-center justify-between gap-2">
-              <span className="inline-flex items-center gap-1.5 text-xs font-extrabold text-slate-900">
-                <Cpu className="h-3.5 w-3.5 text-sky-600" />
-                {item.agent}
-              </span>
-            </div>
-            <p className="text-xs text-slate-600">{item.desc}</p>
-            <div className="pt-1">
-              <span className="rounded-full bg-sky-50 border border-sky-200 px-2.5 py-0.5 text-[10px] font-bold text-sky-800">
-                {item.badge}
-              </span>
-            </div>
-          </div>
-        ))}
       </div>
 
       {/* Interactive AI Question Generator + Symbolic Validator */}
-      <div className="rounded-2xl border-2 border-slate-900 bg-white p-6 shadow-md space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="rounded-3xl border border-[#E8E4DB] bg-white p-8 shadow-sm space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E8E4DB] pb-5">
           <div>
-            <span className="text-xs font-bold uppercase tracking-wider text-sky-700">
-              AI-Assisted Content Production Workflow
+            <span className="text-xs font-semibold uppercase tracking-widest text-[#0F4C3A]">
+              AI-Assisted Authoring Pipeline
             </span>
-            <h2 className="text-lg font-extrabold text-slate-900">
-              Generate & Symbolically Validate New GCSE Question Variation
+            <h2 className="font-serif text-2xl font-semibold text-[#141413] mt-1">
+              Synthesise & Symbolically Verify Question Candidate
             </h2>
           </div>
-          <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-900">
-            Enters REVIEW_PENDING Queue (Requires Specialist Approval)
+          <span className="rounded-full bg-[#FBF4EA] px-3.5 py-1 text-xs font-semibold text-[#9A5B13]">
+            Enters Specialist Review Queue
           </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-5 items-end">
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
+            <label className="block text-xs font-semibold text-[#575550] mb-2">
               Syllabus Topic
             </label>
             <select
               value={selectedTopicId}
               onChange={(e) => setSelectedTopicId(e.target.value)}
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-xs font-semibold text-slate-900"
+              className="w-full rounded-xl border border-[#E8E4DB] bg-[#FAF9F5] px-3.5 py-3 text-xs font-medium text-[#141413] focus:border-[#0F4C3A] focus:outline-none"
             >
               {topics.map((t) => (
                 <option key={t.id} value={t.id}>
@@ -191,8 +131,8 @@ export default function AdminAndAiGovernancePage() {
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
-              Calculator Policy
+            <label className="block text-xs font-semibold text-[#575550] mb-2">
+              Paper Mode
             </label>
             <select
               value={selectedPolicy}
@@ -201,7 +141,7 @@ export default function AdminAndAiGovernancePage() {
                   e.target.value as "NON_CALCULATOR" | "CALCULATOR_ALLOWED"
                 )
               }
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-xs font-semibold text-slate-900"
+              className="w-full rounded-xl border border-[#E8E4DB] bg-[#FAF9F5] px-3.5 py-3 text-xs font-medium text-[#141413] focus:border-[#0F4C3A] focus:outline-none"
             >
               <option value="NON_CALCULATOR">Non-Calculator (Paper 1F)</option>
               <option value="CALCULATOR_ALLOWED">
@@ -211,13 +151,13 @@ export default function AdminAndAiGovernancePage() {
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
+            <label className="block text-xs font-semibold text-[#575550] mb-2">
               Target Foundation Grade
             </label>
             <select
               value={targetGrade}
               onChange={(e) => setTargetGrade(Number(e.target.value))}
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-xs font-semibold text-slate-900"
+              className="w-full rounded-xl border border-[#E8E4DB] bg-[#FAF9F5] px-3.5 py-3 text-xs font-medium text-[#141413] focus:border-[#0F4C3A] focus:outline-none"
             >
               <option value={3}>Grade 3 (Foundation Core)</option>
               <option value={4}>Grade 4 (Standard Pass Target)</option>
@@ -229,34 +169,34 @@ export default function AdminAndAiGovernancePage() {
             type="button"
             disabled={generating}
             onClick={handleGenerateQuestion}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-extrabold text-white hover:bg-slate-800 disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-2 rounded-full bg-[#0F4C3A] px-5 py-3 text-xs font-semibold text-white hover:bg-[#19634D] disabled:opacity-50 transition-all"
           >
-            <Sparkles className="h-4 w-4 text-sky-400" />
+            <Sparkles className="h-4 w-4" />
             <span>
               {generating
-                ? "Running Agent 2 & Agent 3..."
-                : "Generate & Validate Draft"}
+                ? "Verifying with Symbolic Engine..."
+                : "Generate & Verify Candidate"}
             </span>
           </button>
         </div>
       </div>
 
       {/* Question Bank & Governance Approval Queue */}
-      <div className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-xl font-extrabold text-slate-900">
-            Question Bank & Specialist Review Queue ({filteredQuestions.length})
+      <div className="space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <h2 className="font-serif text-2xl font-semibold text-[#141413]">
+            Question Repository & Review Queue ({filteredQuestions.length})
           </h2>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2">
             {["ALL", "REVIEW_PENDING", "PUBLISHED", "ARCHIVED"].map((st) => (
               <button
                 key={st}
                 type="button"
                 onClick={() => setStatusFilter(st)}
-                className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${
+                className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-colors ${
                   statusFilter === st
-                    ? "bg-slate-900 text-white"
-                    : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"
+                    ? "bg-[#141413] text-white"
+                    : "bg-white border border-[#E8E4DB] text-[#575550] hover:bg-[#F3F1EA]"
                 }`}
               >
                 {st.replace("_", " ")}
@@ -274,29 +214,31 @@ export default function AdminAndAiGovernancePage() {
             return (
               <div
                 key={q.id}
-                className={`rounded-2xl border p-5 bg-white shadow-sm space-y-3 ${
-                  isPending ? "border-2 border-amber-400" : "border-slate-200"
+                className={`rounded-3xl border p-6 sm:p-7 bg-white shadow-sm space-y-4 ${
+                  isPending ? "border-[#9A5B13]/40 bg-[#FAF9F5]" : "border-[#E8E4DB]"
                 }`}
               >
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
-                  <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E8E4DB] pb-4">
+                  <div className="flex flex-wrap items-center gap-2.5">
                     <span
-                      className={`rounded-full px-2.5 py-0.5 text-[10px] font-extrabold ${
+                      className={`rounded-full px-3 py-0.5 text-[11px] font-semibold ${
                         q.lifecycleStatus === "PUBLISHED"
-                          ? "bg-emerald-100 text-emerald-800"
+                          ? "bg-[#EDF3F0] text-[#0F4C3A]"
                           : isPending
-                          ? "bg-amber-100 text-amber-900"
-                          : "bg-slate-200 text-slate-700"
+                          ? "bg-[#FBF4EA] text-[#9A5B13]"
+                          : "bg-[#F3F1EA] text-[#575550]"
                       }`}
                     >
-                      {q.lifecycleStatus} (v{q.version})
+                      {q.lifecycleStatus} · v{q.version}
                     </span>
-                    <span className="text-xs font-bold text-slate-900">
+                    <span className="text-sm font-semibold text-[#141413]">
                       {q.subtopicName}
                     </span>
-                    <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-700">
-                      {q.calculatorPolicy} · {q.totalMarks} marks · Grade{" "}
-                      {q.targetGrade}
+                    <span className="rounded-full bg-[#F3F1EA] px-3 py-0.5 text-[11px] font-medium text-[#575550]">
+                      {q.calculatorPolicy === "NON_CALCULATOR"
+                        ? "Non-Calculator"
+                        : "Calculator"}{" "}
+                      · {q.totalMarks} marks · Grade {q.targetGrade}
                     </span>
                   </div>
 
@@ -308,44 +250,44 @@ export default function AdminAndAiGovernancePage() {
                         onClick={() =>
                           updateQuestionStatus(q.id, "PUBLISHED")
                         }
-                        className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700"
+                        className="inline-flex items-center gap-1.5 rounded-full bg-[#0F4C3A] px-4 py-1.5 text-xs font-semibold text-white hover:bg-[#19634D] transition-colors"
                       >
                         <CheckCircle2 className="h-3.5 w-3.5" />
-                        <span>Approve & Publish to Students</span>
+                        <span>Approve & Publish</span>
                       </button>
                     )}
                     {q.lifecycleStatus !== "ARCHIVED" && (
                       <button
                         type="button"
                         onClick={() => updateQuestionStatus(q.id, "ARCHIVED")}
-                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-rose-50 hover:text-rose-700"
+                        className="inline-flex items-center gap-1.5 rounded-full border border-[#E8E4DB] px-3.5 py-1.5 text-xs font-medium text-[#575550] hover:bg-[#F3F1EA] hover:text-[#141413] transition-colors"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
-                        <span>Withdraw</span>
+                        <span>Archive</span>
                       </button>
                     )}
                   </div>
                 </div>
 
-                <div className="text-sm font-medium text-slate-900">
+                <div className="text-base text-[#141413] leading-relaxed">
                   <MathText text={q.stemMarkdown} />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                  <div className="rounded-xl bg-slate-50 border border-slate-200 p-3 space-y-1">
-                    <div className="font-bold text-slate-700">
-                      Mark Scheme & Step Checkpoints:
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                  <div className="rounded-2xl bg-[#FAF9F5] border border-[#E8E4DB] p-4 space-y-1.5">
+                    <div className="font-semibold text-[#141413]">
+                      Mark Scheme & Step Checkpoints
                     </div>
-                    <div>
+                    <div className="text-[#575550]">
                       Accepted Final:{" "}
-                      <span className="font-mono font-bold text-slate-900">
+                      <span className="font-mono font-semibold text-[#141413]">
                         {q.markScheme.acceptedFinalAnswers.join(" | ")}
                       </span>
                     </div>
                     {q.markScheme.workingSteps.map((s) => (
-                      <div key={s.id} className="text-slate-600">
+                      <div key={s.id} className="text-[#575550]">
                         • [{s.markCode}] {s.promptLabel} →{" "}
-                        <span className="font-mono">
+                        <span className="font-mono text-[#141413]">
                           {s.acceptedAnswers.join(", ")}
                         </span>
                       </div>
@@ -353,16 +295,18 @@ export default function AdminAndAiGovernancePage() {
                   </div>
 
                   {q.validationReport && (
-                    <div className="rounded-xl bg-emerald-50/60 border border-emerald-200 p-3 space-y-1">
-                      <div className="inline-flex items-center gap-1.5 font-bold text-emerald-900">
-                        <FileCheck2 className="h-3.5 w-3.5 text-emerald-600" />
+                    <div className="rounded-2xl bg-[#EDF3F0]/60 border border-[#0F4C3A]/15 p-4 space-y-1.5">
+                      <div className="inline-flex items-center gap-1.5 font-semibold text-[#0F4C3A]">
+                        <FileCheck2 className="h-4 w-4" />
                         <span>
-                          Agent 3 Symbolic Validation Report (Passed:{" "}
-                          {String(q.validationReport.symbolicCheckPassed)})
+                          Agent 3 Symbolic Verification:{" "}
+                          {q.validationReport.symbolicCheckPassed
+                            ? "Verified"
+                            : "Flagged"}
                         </span>
                       </div>
                       {q.validationReport.validatorNotes.map((note, idx) => (
-                        <div key={idx} className="text-emerald-800 text-[11px]">
+                        <div key={idx} className="text-[#0F4C3A]/90 text-xs">
                           ✓ {note}
                         </div>
                       ))}
@@ -375,48 +319,55 @@ export default function AdminAndAiGovernancePage() {
         </div>
       </div>
 
-      {/* Multi-Exam-Board & Commercial Catalogue Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-3">
-          <h3 className="text-base font-extrabold text-slate-900">
-            Configured Examination Specifications (Decoupled Architecture)
-          </h3>
-          {specifications.map((sp) => (
-            <div
-              key={sp.id}
-              className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 text-xs space-y-1"
-            >
-              <div className="flex items-center justify-between font-bold text-slate-900">
-                <span>
-                  {sp.boardCode} ({sp.specCode}) — {sp.subjectName}
-                </span>
-                <span className="text-sky-700">
-                  Grade 4 Benchmark: {sp.grade4PassPercentage}%
-                </span>
+      {/* 6-Agent Architecture Summary & Multi-Board Catalogue */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="rounded-3xl border border-[#E8E4DB] bg-white p-8 shadow-sm space-y-4">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-[#0F4C3A]">
+            <Cpu className="h-4 w-4" />
+            <span>Configured Examination Specifications</span>
+          </div>
+          <div className="space-y-3">
+            {specifications.map((sp) => (
+              <div
+                key={sp.id}
+                className="rounded-2xl border border-[#E8E4DB] bg-[#FAF9F5] p-4 text-xs space-y-1"
+              >
+                <div className="flex items-center justify-between font-semibold text-[#141413]">
+                  <span>
+                    {sp.boardCode} ({sp.specCode}) — {sp.subjectName}
+                  </span>
+                  <span className="text-[#0F4C3A]">
+                    Grade 4 Pass Target: {sp.grade4PassPercentage}%
+                  </span>
+                </div>
+                <div className="text-[#575550]">{sp.name}</div>
               </div>
-              <div className="text-slate-600">{sp.name}</div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-3">
-          <h3 className="text-base font-extrabold text-slate-900">
-            Configured Commercial Products & Entitlements
-          </h3>
-          {products.map((pr) => (
-            <div
-              key={pr.id}
-              className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 text-xs space-y-1"
-            >
-              <div className="flex items-center justify-between font-bold text-slate-900">
-                <span>{pr.name}</span>
-                <span className="text-emerald-700">{pr.priceFormatted}</span>
+        <div className="rounded-3xl border border-[#E8E4DB] bg-white p-8 shadow-sm space-y-4">
+          <div className="text-xs font-semibold uppercase tracking-widest text-[#0F4C3A]">
+            Commercial Products & Entitlements
+          </div>
+          <div className="space-y-3">
+            {products.map((pr) => (
+              <div
+                key={pr.id}
+                className="rounded-2xl border border-[#E8E4DB] bg-[#FAF9F5] p-4 text-xs space-y-1"
+              >
+                <div className="flex items-center justify-between font-semibold text-[#141413]">
+                  <span>{pr.name}</span>
+                  <span className="font-serif text-base text-[#0F4C3A]">
+                    {pr.priceFormatted}
+                  </span>
+                </div>
+                <div className="text-[#575550]">
+                  Scope: {pr.entitlementScope} · Model: {pr.type}
+                </div>
               </div>
-              <div className="text-slate-600">
-                Scope: {pr.entitlementScope} · Type: {pr.type}
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
     </div>

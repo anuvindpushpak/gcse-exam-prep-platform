@@ -609,3 +609,4 @@ export function DeclarativeDiagram({ spec }: DeclarativeDiagramProps) {
       return null;
   }
 }
+

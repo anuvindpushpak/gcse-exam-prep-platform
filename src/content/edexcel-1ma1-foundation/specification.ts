@@ -230,3 +230,4 @@ export const PRODUCT_CATALOG: ProductCatalogItem[] = [
     ],
   },
 ];
+

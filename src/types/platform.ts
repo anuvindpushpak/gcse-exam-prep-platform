@@ -399,3 +399,4 @@ export interface StudentEntitlementState {
   hasWeeklyMembership: boolean;
   purchasedProducts: PurchaseRecord[];
 }
+
