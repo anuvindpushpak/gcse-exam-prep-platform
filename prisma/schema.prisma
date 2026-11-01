@@ -1,0 +1,276 @@
+// Relational Schema for the AI-Powered Digital Examination Preparation Platform
+// Supports PostgreSQL (Railway / Supabase / Neon) and SQLite
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// 1. ACCOUNTS, PARENT LINKING & COMMERCIAL ENTITLEMENTS
+// ============================================================================
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  firstName    String
+  role         String   @default("STUDENT") // STUDENT | PARENT | ADMIN
+  examYear     Int?
+  targetGrade  Int?     @default(4)
+  boardCode    String?  @default("EDEXCEL")
+  createdAt    DateTime @default(now())
+
+  parentLinks        ParentStudentLink[] @relation("ParentRelation")
+  studentLinks       ParentStudentLink[] @relation("StudentRelation")
+  orders             PurchaseOrder[]
+  entitlements       Entitlement[]
+  assessmentAttempts AssessmentAttempt[]
+  topicMastery       StudentTopicMastery[]
+  recommendations    StudentRecommendation[]
+}
+
+model ParentStudentLink {
+  id         String   @id @default(cuid())
+  parentId   String?
+  studentId  String
+  inviteCode String   @unique
+  status     String   @default("PENDING") // PENDING | ACTIVE
+  createdAt  DateTime @default(now())
+
+  parent  User? @relation("ParentRelation", fields: [parentId], references: [id])
+  student User  @relation("StudentRelation", fields: [studentId], references: [id])
+}
+
+model Product {
+  id              String   @id @default(cuid())
+  slug            String   @unique
+  name            String
+  description     String
+  type            String   // ONE_TIME_PACK | SUBSCRIPTION
+  pricePence      Int      // 3999 (£39.99) | 799 (£7.99)
+  billingInterval String?  // ONE_TIME | MONTHLY
+  subjectSlug     String   @default("gcse-maths")
+  tier            String   @default("FOUNDATION")
+  featuresJson    String
+
+  orders       PurchaseOrder[]
+  entitlements Entitlement[]
+}
+
+model PurchaseOrder {
+  id                   String   @id @default(cuid())
+  buyerUserId          String
+  beneficiaryStudentId String
+  productId            String
+  amountPence          Int
+  status               String   @default("COMPLETED") // COMPLETED | PENDING | REFUNDED
+  providerSessionId    String?
+  createdAt            DateTime @default(now())
+
+  buyer   User    @relation(fields: [buyerUserId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+}
+
+model Entitlement {
+  id         String    @id @default(cuid())
+  studentId  String
+  productId  String?
+  scope      String    // DIAGNOSTIC_FREE | FULL_PACK | WEEKLY_MEMBERSHIP
+  status     String    @default("ACTIVE") // ACTIVE | EXPIRED | CANCELLED
+  validUntil DateTime?
+  createdAt  DateTime  @default(now())
+
+  student User     @relation(fields: [studentId], references: [id])
+  product Product? @relation(fields: [productId], references: [id])
+}
+
+// ============================================================================
+// 2. ENGINE 1: CONTENT ENGINE & AI GOVERNANCE
+// ============================================================================
+
+model Subject {
+  id                 String   @id @default(cuid())
+  slug               String   @unique
+  name               String
+  country            String   @default("UK")
+  qualificationLevel String   @default("GCSE")
+
+  specs ExamBoardSpec[]
+}
+
+model ExamBoardSpec {
+  id               String @id @default(cuid())
+  subjectId        String
+  boardCode        String // EDEXCEL | AQA | OCR
+  specCode         String // 1MA1 | 8300 | J560
+  name             String
+  tiersJson        String
+  formulaSheetJson String
+
+  subject   Subject              @relation(fields: [subjectId], references: [id])
+  topics    Topic[]
+  questions Question[]
+  templates AssessmentTemplate[]
+}
+
+model Topic {
+  id                       String  @id @default(cuid())
+  specId                   String
+  code                     String
+  domain                   String
+  name                     String
+  tier                     String  @default("FOUNDATION")
+  gradeTarget              Int     @default(4)
+  weightPercentage         Int
+  prerequisiteTopicIdsJson String
+  isFreeSample             Boolean @default(false)
+
+  spec             ExamBoardSpec       @relation(fields: [specId], references: [id])
+  learningResource LearningResource?
+  questions        Question[]
+  masteryRecords   StudentTopicMastery[]
+}
+
+model LearningResource {
+  id                 String @id @default(cuid())
+  topicId            String @unique
+  summaryMarkdown    String
+  keyRulesJson       String
+  formulaeJson       String
+  workedExamplesJson String
+  commonMistakesJson String
+  status             String @default("PUBLISHED")
+
+  topic Topic @relation(fields: [topicId], references: [id])
+}
+
+model Question {
+  id                     String   @id @default(cuid())
+  specId                 String
+  topicId                String
+  subtopicName           String
+  tier                   String   @default("FOUNDATION")
+  targetGrade            Int      @default(4)
+  difficulty             Int      @default(3)
+  calculatorPolicy       String   // NON_CALCULATOR | CALCULATOR_ALLOWED
+  assessmentObjective    String   // AO1 | AO2 | AO3
+  questionType           String   // NUMERIC | ALGEBRAIC | MULTI_STEP | MULTIPLE_CHOICE
+  stemMarkdown           String
+  diagramSpecJson        String?
+  totalMarks             Int
+  markSchemeJson         String
+  workedSolutionMarkdown String
+  commonMistakeHint      String
+  lifecycleStatus        String   @default("PUBLISHED") // AI_DRAFT | AUTO_VALIDATED | REVIEW_PENDING | PUBLISHED
+  validationReportJson   String?
+  version                Int      @default(1)
+  approvedById           String?
+  createdAt              DateTime @default(now())
+
+  spec      ExamBoardSpec      @relation(fields: [specId], references: [id])
+  topic     Topic              @relation(fields: [topicId], references: [id])
+  responses QuestionResponse[]
+}
+
+// ============================================================================
+// 3. ENGINE 2: ASSESSMENT & EXAMINATION SIMULATOR ENGINE
+// ============================================================================
+
+model AssessmentTemplate {
+  id                  String    @id @default(cuid())
+  specId              String
+  slug                String    @unique
+  title               String
+  type                String    // DIAGNOSTIC | TOPIC_PRACTICE | TIMED_CHALLENGE | MOCK_EXAM | WEEKLY_CHALLENGE
+  calculatorPolicy    String    // NON_CALCULATOR | CALCULATOR_ALLOWED | MIXED
+  timeLimitMinutes    Int
+  totalMarks          Int
+  passMarkGrade4      Int
+  requiresEntitlement String    // FREE | FULL_PACK | WEEKLY_MEMBERSHIP
+  sectionsJson        String
+  releaseDate         DateTime?
+
+  spec     ExamBoardSpec       @relation(fields: [specId], references: [id])
+  attempts AssessmentAttempt[]
+}
+
+model AssessmentAttempt {
+  id                      String    @id @default(cuid())
+  studentId               String
+  templateId              String
+  mode                    String    // DIAGNOSTIC | PRACTICE | TIMED_EXAM | MOCK_EXAM
+  status                  String    @default("IN_PROGRESS") // IN_PROGRESS | SUBMITTED
+  startedAt               DateTime  @default(now())
+  submittedAt             DateTime?
+  timeSpentSeconds        Int       @default(0)
+  earnedMarks             Int       @default(0)
+  totalMarks              Int       @default(0)
+  percentageScore         Float     @default(0)
+  estimatedGrade          String?
+  grade4ReadinessDelta    Float     @default(0)
+  topicBreakdownJson      String?
+  calculatorBreakdownJson String?
+
+  student   User               @relation(fields: [studentId], references: [id])
+  template  AssessmentTemplate @relation(fields: [templateId], references: [id])
+  responses QuestionResponse[]
+}
+
+model QuestionResponse {
+  id                   String  @id @default(cuid())
+  attemptId            String
+  questionId           String
+  studentFinalAnswer   String
+  studentStepsJson     String?
+  isFlagged            Boolean @default(false)
+  marksAwarded         Int     @default(0)
+  maxMarks             Int
+  methodMarksAwarded   Int     @default(0)
+  accuracyMarksAwarded Int     @default(0)
+  isCorrect            Boolean @default(false)
+  detectedMisconception String?
+  feedbackMarkdown     String?
+  timeSpentSeconds     Int     @default(0)
+
+  attempt  AssessmentAttempt @relation(fields: [attemptId], references: [id])
+  question Question          @relation(fields: [questionId], references: [id])
+}
+
+// ============================================================================
+// 4. ENGINE 3: INTELLIGENCE ENGINE
+// ============================================================================
+
+model StudentTopicMastery {
+  id                 String    @id @default(cuid())
+  studentId          String
+  topicId            String
+  masteryScore       Float     @default(0)
+  status             String    @default("NOT_STARTED") // NOT_STARTED | NEEDS_FOCUS | DEVELOPING | SECURE_GRADE_4
+  questionsAttempted Int       @default(0)
+  marksEarned        Int       @default(0)
+  marksPossible      Int       @default(0)
+  lastPractisedAt    DateTime?
+
+  student User  @relation(fields: [studentId], references: [id])
+  topic   Topic @relation(fields: [topicId], references: [id])
+
+  @@unique([studentId, topicId])
+}
+
+model StudentRecommendation {
+  id                    String  @id @default(cuid())
+  studentId             String
+  priorityRank          Int
+  topicId               String
+  reasonSummary         String
+  recommendedActionType String  // STUDY_GUIDE | PRACTICE_SET | RETAKE_MINI_TEST | SIT_MOCK_PAPER
+  potentialMarkGain     Int
+  isCompleted           Boolean @default(false)
+
+  student User @relation(fields: [studentId], references: [id])
+}

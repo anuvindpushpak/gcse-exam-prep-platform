@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    line-height: 1.5;
+    text-align: start;
+    overflow-wrap: break-word;
+    @apply bg-slate-50 text-slate-900 antialiased;
+  }
+
+  h1, h2, h3 {
+    text-wrap: balance;
+    line-height: 1.25;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+}
