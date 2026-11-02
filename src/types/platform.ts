@@ -405,6 +405,15 @@ export interface PurchaseRecord {
   createdAt: string;
 }
 
+export interface ContactEnquiryRecord {
+  id: string;
+  fullName: string;
+  email: string;
+  role: string;
+  message: string;
+  createdAt: string;
+}
+
 export interface StudentEntitlementState {
   hasFreeDiagnostic: boolean;
   hasFullPack: boolean;

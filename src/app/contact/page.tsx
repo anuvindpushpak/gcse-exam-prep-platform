@@ -2,17 +2,31 @@
 
 import React, { useState } from "react";
 import { CheckCircle2, Send } from "lucide-react";
+import { usePlatform } from "@/components/providers/PlatformProvider";
 
 export default function ContactPage() {
+  const { submitContactEnquiry } = usePlatform();
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [enquiryType, setEnquiryType] = useState("Parent / Student Support");
   const [message, setMessage] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
+    setSubmitting(true);
+    try {
+      await submitContactEnquiry({
+        fullName: name,
+        email,
+        role: enquiryType,
+        message,
+      });
+      setSubmitted(true);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -130,10 +144,11 @@ export default function ContactPage() {
 
             <button
               type="submit"
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-[#0F4C3A] px-7 py-3.5 text-sm font-semibold text-white shadow-sm hover:bg-[#0B382B] transition-all"
+              disabled={submitting}
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-[#0F4C3A] px-7 py-3.5 text-sm font-semibold text-white shadow-sm hover:bg-[#0B382B] disabled:opacity-50 transition-all"
             >
               <Send className="h-4 w-4" />
-              <span>Send Message</span>
+              <span>{submitting ? "Sending..." : "Send Message"}</span>
             </button>
           </form>
         )}

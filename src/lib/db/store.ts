@@ -16,6 +16,7 @@ import { gradeQuestionResponse, runSymbolicValidationAgent } from "@/lib/engine/
 import {
   AssessmentAttempt,
   AssessmentTemplate,
+  ContactEnquiryRecord,
   ContentLifecycleStatus,
   CouponRule,
   ExamBoardCode,
@@ -43,6 +44,7 @@ export interface PlatformDatabaseState {
   products: ProductCatalogItem[];
   purchases: PurchaseRecord[];
   coupons: CouponRule[];
+  enquiries: ContactEnquiryRecord[];
   emailOtps: Record<string, { code: string; expiresAt: number }>;
 }
 
@@ -78,12 +80,16 @@ const DEFAULT_COUPONS: CouponRule[] = [
 ];
 
 function getDbFilePath(): string {
-  const localDir = path.join(process.cwd(), "data");
+  // Prefer persistent Railway volume mount if configured, then local workspace data dir
+  const volumeDir =
+    process.env.RAILWAY_VOLUME_MOUNT_PATH ||
+    process.env.PERSISTENT_DATA_DIR ||
+    path.join(process.cwd(), "data");
   try {
-    if (!fs.existsSync(localDir)) {
-      fs.mkdirSync(localDir, { recursive: true });
+    if (!fs.existsSync(volumeDir)) {
+      fs.mkdirSync(volumeDir, { recursive: true });
     }
-    return path.join(localDir, "runtime-db.json");
+    return path.join(volumeDir, "runtime-db.json");
   } catch {
     return path.join("/tmp", "gcse-exam-platform-db.json");
   }
@@ -136,6 +142,7 @@ function createInitialSeedState(): PlatformDatabaseState {
     products: PRODUCT_CATALOG,
     purchases: [],
     coupons: DEFAULT_COUPONS.map((c) => ({ ...c })),
+    enquiries: [],
     emailOtps: {},
   };
 }
@@ -151,6 +158,9 @@ export function readDb(): PlatformDatabaseState {
       const parsed = JSON.parse(raw) as PlatformDatabaseState;
       if (!parsed.coupons || parsed.coupons.length === 0) {
         parsed.coupons = DEFAULT_COUPONS.map((c) => ({ ...c }));
+      }
+      if (!parsed.enquiries) {
+        parsed.enquiries = [];
       }
       if (!parsed.emailOtps) {
         parsed.emailOtps = {};
@@ -1000,5 +1010,28 @@ export function signInOrRegisterUser(params: {
   db.activeUserId = user.id;
   writeDb(db);
   return user;
+}
+
+/**
+ * Records a contact enquiry from a parent, student, or school in the database.
+ */
+export function recordContactEnquiry(params: {
+  fullName: string;
+  email: string;
+  role: string;
+  message: string;
+}): ContactEnquiryRecord {
+  const db = readDb();
+  const enquiry: ContactEnquiryRecord = {
+    id: `enq-${Date.now()}`,
+    fullName: params.fullName.trim() || "Visitor",
+    email: params.email.trim(),
+    role: params.role.trim() || "Parent / Guardian",
+    message: params.message.trim(),
+    createdAt: new Date().toISOString(),
+  };
+  db.enquiries.unshift(enquiry);
+  writeDb(db);
+  return enquiry;
 }
 

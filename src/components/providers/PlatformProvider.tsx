@@ -9,6 +9,7 @@ import { TopNavBar } from "@/components/layout/TopNavBar";
 import {
   AssessmentAttempt,
   AssessmentTemplate,
+  ContactEnquiryRecord,
   ContentLifecycleStatus,
   CouponRule,
   ExamBoardCode,
@@ -36,8 +37,14 @@ export interface PlatformContextValue {
   attempts: AssessmentAttempt[];
   products: ProductCatalogItem[];
   coupons: CouponRule[];
+  enquiries: ContactEnquiryRecord[];
   entitlements: StudentEntitlementState;
   intelligenceProfile?: StudentIntelligenceProfile;
+  integrationStatus?: {
+    stripeLive: boolean;
+    emailLive: boolean;
+    persistentStoragePath: boolean;
+  };
   openCheckout: (productId?: string) => void;
   openAuth: (mode?: "SIGN_IN" | "SIGN_UP") => void;
   authenticateUser: (params: {
@@ -51,7 +58,8 @@ export interface PlatformContextValue {
   }) => Promise<void>;
   requestEmailCode: (email: string) => Promise<{
     email: string;
-    demoPreviewCode: string;
+    demoPreviewCode?: string;
+    sentLiveEmail?: boolean;
     isExistingUser: boolean;
   }>;
   verifyEmailCode: (params: {
@@ -69,6 +77,12 @@ export interface PlatformContextValue {
     discountPercent: number;
     description?: string;
   }) => Promise<CouponRule>;
+  submitContactEnquiry: (params: {
+    fullName: string;
+    email: string;
+    role: string;
+    message: string;
+  }) => Promise<ContactEnquiryRecord>;
   signOut: () => Promise<void>;
   switchUser: (userId: string, selectedBoard?: ExamBoardCode) => Promise<void>;
   simulateDiagnostic: () => Promise<AssessmentAttempt | undefined>;
@@ -123,8 +137,14 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
     attempts: AssessmentAttempt[];
     products: ProductCatalogItem[];
     coupons: CouponRule[];
+    enquiries: ContactEnquiryRecord[];
     entitlements: StudentEntitlementState;
     intelligenceProfile?: StudentIntelligenceProfile;
+    integrationStatus?: {
+      stripeLive: boolean;
+      emailLive: boolean;
+      persistentStoragePath: boolean;
+    };
   }>({
     users: [],
     specifications: [],
@@ -135,6 +155,7 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
     attempts: [],
     products: [],
     coupons: [],
+    enquiries: [],
     entitlements: {
       hasFreeDiagnostic: true,
       hasFullPack: false,
@@ -218,7 +239,8 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
     });
     return json.emailVerificationChallenge as {
       email: string;
-      demoPreviewCode: string;
+      demoPreviewCode?: string;
+      sentLiveEmail?: boolean;
       isExistingUser: boolean;
     };
   };
@@ -262,6 +284,19 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
       ...params,
     });
     return json.latestCoupon as CouponRule;
+  };
+
+  const submitContactEnquiry = async (params: {
+    fullName: string;
+    email: string;
+    role: string;
+    message: string;
+  }) => {
+    const json = await postAction({
+      action: "SUBMIT_CONTACT_ENQUIRY",
+      ...params,
+    });
+    return json.latestEnquiry as ContactEnquiryRecord;
   };
 
   const signOut = async () => {
@@ -315,7 +350,7 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
     studentLastName?: string,
     couponCode?: string
   ) => {
-    await postAction({
+    const json = await postAction({
       action: "PURCHASE_PRODUCT",
       productId,
       buyerEmail,
@@ -323,6 +358,10 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
       studentLastName,
       couponCode,
     });
+    if (json?.stripeCheckoutUrl && typeof window !== "undefined") {
+      window.location.href = json.stripeCheckoutUrl;
+      return;
+    }
     router.push("/dashboard");
   };
 
@@ -370,6 +409,7 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
         verifyEmailCode,
         linkStudent,
         createCoupon,
+        submitContactEnquiry,
         signOut,
         switchUser,
         simulateDiagnostic,

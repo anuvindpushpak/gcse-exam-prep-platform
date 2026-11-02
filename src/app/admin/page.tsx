@@ -21,6 +21,8 @@ export default function AdminAndAiGovernancePage() {
     questions,
     products,
     coupons,
+    enquiries,
+    integrationStatus,
     openAuth,
     createCoupon,
     generateAiDraft,
@@ -538,6 +540,92 @@ export default function AdminAndAiGovernancePage() {
                 </span>
               </div>
             ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Client Enquiries Inbox & Production Integration Status */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="lg:col-span-7 rounded-3xl border border-[#E8E4DB] bg-white p-8 shadow-sm space-y-4">
+          <div className="flex items-center justify-between border-b border-[#E8E4DB] pb-4">
+            <span className="text-xs font-semibold uppercase tracking-widest text-[#0F4C3A]">
+              Client Enquiries Inbox ({enquiries.length})
+            </span>
+          </div>
+          {enquiries.length === 0 ? (
+            <p className="text-xs text-[#6E6B64] py-4">
+              Messages submitted via the /contact form appear here automatically.
+            </p>
+          ) : (
+            <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
+              {enquiries.map((enq) => (
+                <div
+                  key={enq.id}
+                  className="rounded-2xl border border-[#E8E4DB] bg-[#FAF9F5] p-4 text-xs space-y-1.5"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-[#141413]">
+                      {enq.fullName} ({enq.email})
+                    </span>
+                    <span className="rounded-full bg-white border border-[#E8E4DB] px-2.5 py-0.5 text-[10px] font-semibold text-[#0F4C3A]">
+                      {enq.role}
+                    </span>
+                  </div>
+                  <p className="text-[#3D3B37] leading-relaxed">{enq.message}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="lg:col-span-5 rounded-3xl border border-[#E8E4DB] bg-white p-8 shadow-sm space-y-4">
+          <div className="text-xs font-semibold uppercase tracking-widest text-[#0F4C3A]">
+            Tier 2 Production Switches
+          </div>
+          <div className="space-y-3 text-xs">
+            <div className="rounded-2xl border border-[#E8E4DB] bg-[#FAF9F5] p-4 flex items-center justify-between">
+              <div>
+                <div className="font-semibold text-[#141413]">
+                  Stripe Checkout & Webhooks
+                </div>
+                <div className="text-[#6E6B64] mt-0.5">
+                  Env: STRIPE_SECRET_KEY
+                </div>
+              </div>
+              <span
+                className={`rounded-full px-3 py-1 font-semibold ${
+                  integrationStatus?.stripeLive
+                    ? "bg-[#E6F0EC] text-[#0F4C3A]"
+                    : "bg-amber-50 text-amber-900"
+                }`}
+              >
+                {integrationStatus?.stripeLive
+                  ? "Live Stripe Active"
+                  : "Sandbox / Coupon Mode"}
+              </span>
+            </div>
+
+            <div className="rounded-2xl border border-[#E8E4DB] bg-[#FAF9F5] p-4 flex items-center justify-between">
+              <div>
+                <div className="font-semibold text-[#141413]">
+                  Transactional Email (6-Digit OTP)
+                </div>
+                <div className="text-[#6E6B64] mt-0.5">
+                  Env: RESEND_API_KEY
+                </div>
+              </div>
+              <span
+                className={`rounded-full px-3 py-1 font-semibold ${
+                  integrationStatus?.emailLive
+                    ? "bg-[#E6F0EC] text-[#0F4C3A]"
+                    : "bg-amber-50 text-amber-900"
+                }`}
+              >
+                {integrationStatus?.emailLive
+                  ? "Live Email Active"
+                  : "Instant Auto-Fill Mode"}
+              </span>
+            </div>
           </div>
         </div>
       </div>

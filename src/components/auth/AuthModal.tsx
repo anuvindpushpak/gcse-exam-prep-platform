@@ -22,7 +22,8 @@ interface AuthModalProps {
   onQuickSwitchUser: (userId: string) => Promise<void>;
   onRequestEmailCode: (email: string) => Promise<{
     email: string;
-    demoPreviewCode: string;
+    demoPreviewCode?: string;
+    sentLiveEmail?: boolean;
     isExistingUser: boolean;
   }>;
   onVerifyEmailCode: (params: {
@@ -81,7 +82,7 @@ export function AuthModal({
     setSubmitting(true);
     try {
       const challenge = await onRequestEmailCode(email);
-      setPreviewCode(challenge.demoPreviewCode);
+      setPreviewCode(challenge.demoPreviewCode || null);
       setStep("VERIFY_CODE");
     } catch (err: unknown) {
       setErrorMsg(

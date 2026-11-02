@@ -5,6 +5,7 @@ import {
   getStudentEntitlements,
   linkStudentToParent,
   readDb,
+  recordContactEnquiry,
   recordProductPurchase,
   requestEmailVerificationCode,
   resetDemoDatabase,
@@ -17,6 +18,14 @@ import {
   verifyEmailConfirmationCode,
 } from "@/lib/db/store";
 import { buildStudentIntelligenceProfile } from "@/lib/engine/intelligence";
+import {
+  sendEmailConfirmationCode,
+  sendPurchaseReceiptEmail,
+} from "@/lib/integrations/email";
+import {
+  createStripeCheckoutSession,
+  isLiveStripeConfigured,
+} from "@/lib/integrations/stripe";
 import {
   ContentLifecycleStatus,
   ExamBoardCode,
@@ -86,8 +95,16 @@ function buildFullPayload(sessionUserId: string) {
     attempts: db.attempts.filter((a) => a.studentId === targetStudentId),
     products: db.products,
     coupons: db.coupons,
+    enquiries: db.enquiries,
     entitlements,
     intelligenceProfile,
+    integrationStatus: {
+      stripeLive: isLiveStripeConfigured(),
+      emailLive: Boolean(process.env.RESEND_API_KEY?.trim()),
+      persistentStoragePath: Boolean(
+        process.env.RAILWAY_VOLUME_MOUNT_PATH || process.env.PERSISTENT_DATA_DIR
+      ),
+    },
   };
 }
 
@@ -137,11 +154,19 @@ export async function POST(req: NextRequest) {
 
       case "REQUEST_EMAIL_CODE": {
         const result = requestEmailVerificationCode(body.email || "");
+        const emailDispatch = await sendEmailConfirmationCode({
+          toEmail: result.email,
+          code: result.code,
+        });
         return NextResponse.json({
           ...buildFullPayload(currentSessionUserId),
           emailVerificationChallenge: {
             email: result.email,
-            demoPreviewCode: result.code,
+            // Only show the on-screen preview code when live Resend email is not configured
+            demoPreviewCode: emailDispatch.sentLiveEmail
+              ? undefined
+              : result.code,
+            sentLiveEmail: emailDispatch.sentLiveEmail,
             isExistingUser: Boolean(result.existingUser),
           },
         });
@@ -229,6 +254,19 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({
           ...buildFullPayload(currentSessionUserId),
           latestCoupon: coupon,
+        });
+      }
+
+      case "SUBMIT_CONTACT_ENQUIRY": {
+        const enquiry = recordContactEnquiry({
+          fullName: body.fullName || "",
+          email: body.email || "",
+          role: body.role || "Parent / Guardian",
+          message: body.message || "",
+        });
+        return NextResponse.json({
+          ...buildFullPayload(currentSessionUserId),
+          latestEnquiry: enquiry,
         });
       }
 
@@ -350,12 +388,58 @@ export async function POST(req: NextRequest) {
             ? activeUser.id
             : activeUser.linkedStudentIds?.[0] || "user-student-leo");
 
+        const product = db.products.find((p) => p.id === body.productId);
+        const coupon = validateCouponCode(body.couponCode);
+        const discountPercent = coupon ? coupon.discountPercent : 0;
+        const finalAmountPence = product
+          ? Math.max(
+              0,
+              Math.round(product.pricePence * (1 - discountPercent / 100))
+            )
+          : 0;
+
+        // Dual-Mode Stripe Switch: If live STRIPE_SECRET_KEY is configured and payable > 0, redirect to Stripe Checkout
+        if (product && isLiveStripeConfigured() && finalAmountPence > 0) {
+          const originUrl =
+            req.headers.get("origin") ||
+            process.env.NEXT_PUBLIC_APP_URL ||
+            "http://localhost:3000";
+          const stripeSession = await createStripeCheckoutSession({
+            productId: product.id,
+            productName: product.name,
+            isSubscription: product.type === "SUBSCRIPTION",
+            amountPence: finalAmountPence,
+            buyerEmail: body.buyerEmail || activeUser.email,
+            beneficiaryStudentId,
+            buyerUserId: activeUser.id,
+            couponCode: coupon?.code,
+            originUrl,
+          });
+          if (stripeSession.checkoutUrl) {
+            return jsonWithSessionCookie(
+              {
+                ...buildFullPayload(activeUser.id),
+                stripeCheckoutUrl: stripeSession.checkoutUrl,
+              },
+              activeUser.id
+            );
+          }
+        }
+
         const purchase = recordProductPurchase({
           buyerUserId: activeUser.id,
           buyerEmail: body.buyerEmail || activeUser.email,
           beneficiaryStudentId,
           productId: body.productId,
           couponCode: body.couponCode,
+        });
+
+        await sendPurchaseReceiptEmail({
+          toEmail: purchase.buyerEmail,
+          studentName: activeUser.firstName,
+          productName: purchase.productName,
+          amountFormatted: `£${(purchase.amountPence / 100).toFixed(2)}`,
+          parentInviteCode: activeUser.parentInviteCode,
         });
 
         return jsonWithSessionCookie(

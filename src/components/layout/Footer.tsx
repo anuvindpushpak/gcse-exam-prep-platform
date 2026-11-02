@@ -94,14 +94,6 @@ export function Footer() {
               </li>
               <li>
                 <Link
-                  href="/admin"
-                  className="hover:text-[#141413] transition-colors"
-                >
-                  Curator Studio
-                </Link>
-              </li>
-              <li>
-                <Link
                   href="/contact"
                   className="font-medium text-[#0F4C3A] hover:underline transition-colors"
                 >
@@ -119,8 +111,14 @@ export function Footer() {
             reserved.
           </div>
           <div className="flex flex-wrap items-center gap-6">
-            <Link href="/parent" className="hover:text-[#141413]">
-              Privacy & Safeguarding
+            <Link href="/privacy" className="hover:text-[#141413]">
+              Privacy Policy
+            </Link>
+            <Link href="/terms" className="hover:text-[#141413]">
+              Terms of Service
+            </Link>
+            <Link href="/refunds" className="hover:text-[#141413]">
+              Refund Policy
             </Link>
             <Link href="/contact" className="hover:text-[#141413]">
               Contact
