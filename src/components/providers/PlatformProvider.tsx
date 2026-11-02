@@ -1,12 +1,16 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { AuthModal } from "@/components/auth/AuthModal";
 import { CheckoutModal } from "@/components/commerce/CheckoutModal";
+import { Footer } from "@/components/layout/Footer";
 import { TopNavBar } from "@/components/layout/TopNavBar";
 import {
   AssessmentAttempt,
   AssessmentTemplate,
   ContentLifecycleStatus,
+  CouponRule,
   ExamBoardCode,
   ExamBoardSpecification,
   LearningResource,
@@ -20,6 +24,7 @@ import {
 
 export interface PlatformContextValue {
   loading: boolean;
+  isAuthenticated: boolean;
   activeUser?: UserAccount;
   targetStudent?: UserAccount;
   users: UserAccount[];
@@ -30,9 +35,41 @@ export interface PlatformContextValue {
   assessmentTemplates: AssessmentTemplate[];
   attempts: AssessmentAttempt[];
   products: ProductCatalogItem[];
+  coupons: CouponRule[];
   entitlements: StudentEntitlementState;
   intelligenceProfile?: StudentIntelligenceProfile;
   openCheckout: (productId?: string) => void;
+  openAuth: (mode?: "SIGN_IN" | "SIGN_UP") => void;
+  authenticateUser: (params: {
+    email: string;
+    firstName?: string;
+    lastName?: string;
+    role?: "STUDENT" | "PARENT" | "ADMIN";
+    selectedBoard?: ExamBoardCode;
+    linkedStudentQuery?: string;
+    skipRedirect?: boolean;
+  }) => Promise<void>;
+  requestEmailCode: (email: string) => Promise<{
+    email: string;
+    demoPreviewCode: string;
+    isExistingUser: boolean;
+  }>;
+  verifyEmailCode: (params: {
+    email: string;
+    code: string;
+    firstName?: string;
+    lastName?: string;
+    role?: "STUDENT" | "PARENT" | "ADMIN";
+    selectedBoard?: ExamBoardCode;
+    linkedStudentQuery?: string;
+  }) => Promise<void>;
+  linkStudent: (studentEmailOrInviteCode: string) => Promise<UserAccount>;
+  createCoupon: (params: {
+    code: string;
+    discountPercent: number;
+    description?: string;
+  }) => Promise<CouponRule>;
+  signOut: () => Promise<void>;
   switchUser: (userId: string, selectedBoard?: ExamBoardCode) => Promise<void>;
   simulateDiagnostic: () => Promise<AssessmentAttempt | undefined>;
   submitAssessment: (params: {
@@ -48,11 +85,18 @@ export interface PlatformContextValue {
       }
     >;
   }) => Promise<AssessmentAttempt | undefined>;
-  purchaseProduct: (productId: string, buyerEmail?: string) => Promise<void>;
+  purchaseProduct: (
+    productId: string,
+    buyerEmail?: string,
+    studentFirstName?: string,
+    studentLastName?: string,
+    couponCode?: string
+  ) => Promise<void>;
   generateAiDraft: (params: {
     topicId: string;
     calculatorPolicy: "NON_CALCULATOR" | "CALCULATOR_ALLOWED";
     targetGrade: number;
+    autoPublishForPractice?: boolean;
   }) => Promise<QuestionItem | undefined>;
   updateQuestionStatus: (
     questionId: string,
@@ -65,6 +109,7 @@ export interface PlatformContextValue {
 const PlatformContext = createContext<PlatformContextValue | null>(null);
 
 export function PlatformProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<{
     activeUser?: UserAccount;
@@ -77,6 +122,7 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
     assessmentTemplates: AssessmentTemplate[];
     attempts: AssessmentAttempt[];
     products: ProductCatalogItem[];
+    coupons: CouponRule[];
     entitlements: StudentEntitlementState;
     intelligenceProfile?: StudentIntelligenceProfile;
   }>({
@@ -88,6 +134,7 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
     assessmentTemplates: [],
     attempts: [],
     products: [],
+    coupons: [],
     entitlements: {
       hasFreeDiagnostic: true,
       hasFullPack: false,
@@ -100,6 +147,8 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
   const [checkoutProductId, setCheckoutProductId] = useState<string>(
     "prod-gcse-maths-grade4-pack"
   );
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<"SIGN_IN" | "SIGN_UP">("SIGN_IN");
 
   const fetchState = async () => {
     try {
@@ -124,9 +173,10 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
       body: JSON.stringify(payload),
     });
     const json = await res.json();
-    if (res.ok) {
-      setData(json);
+    if (!res.ok) {
+      throw new Error(json?.error || "Request failed");
     }
+    setData(json);
     return json;
   };
 
@@ -135,8 +185,102 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
     setCheckoutOpen(true);
   };
 
+  const openAuth = (mode: "SIGN_IN" | "SIGN_UP" = "SIGN_IN") => {
+    setAuthMode(mode);
+    setAuthOpen(true);
+  };
+
+  const authenticateUser = async (params: {
+    email: string;
+    firstName?: string;
+    lastName?: string;
+    role?: "STUDENT" | "PARENT" | "ADMIN";
+    selectedBoard?: ExamBoardCode;
+    linkedStudentQuery?: string;
+    skipRedirect?: boolean;
+  }) => {
+    const json = await postAction({
+      action: "SIGN_IN_OR_REGISTER",
+      ...params,
+    });
+    if (!params.skipRedirect && json?.activeUser) {
+      const role = json.activeUser.role;
+      if (role === "PARENT") router.push("/parent");
+      else if (role === "ADMIN") router.push("/admin");
+      else router.push("/dashboard");
+    }
+  };
+
+  const requestEmailCode = async (email: string) => {
+    const json = await postAction({
+      action: "REQUEST_EMAIL_CODE",
+      email,
+    });
+    return json.emailVerificationChallenge as {
+      email: string;
+      demoPreviewCode: string;
+      isExistingUser: boolean;
+    };
+  };
+
+  const verifyEmailCode = async (params: {
+    email: string;
+    code: string;
+    firstName?: string;
+    lastName?: string;
+    role?: "STUDENT" | "PARENT" | "ADMIN";
+    selectedBoard?: ExamBoardCode;
+    linkedStudentQuery?: string;
+  }) => {
+    const json = await postAction({
+      action: "VERIFY_EMAIL_CODE",
+      ...params,
+    });
+    if (json?.activeUser) {
+      const role = json.activeUser.role;
+      if (role === "PARENT") router.push("/parent");
+      else if (role === "ADMIN") router.push("/admin");
+      else router.push("/dashboard");
+    }
+  };
+
+  const linkStudent = async (studentEmailOrInviteCode: string) => {
+    const json = await postAction({
+      action: "LINK_STUDENT",
+      studentEmailOrInviteCode,
+    });
+    return json.linkedStudent as UserAccount;
+  };
+
+  const createCoupon = async (params: {
+    code: string;
+    discountPercent: number;
+    description?: string;
+  }) => {
+    const json = await postAction({
+      action: "CREATE_COUPON",
+      ...params,
+    });
+    return json.latestCoupon as CouponRule;
+  };
+
+  const signOut = async () => {
+    await postAction({ action: "SIGN_OUT" });
+    router.push("/");
+  };
+
   const switchUser = async (userId: string, selectedBoard?: ExamBoardCode) => {
-    await postAction({ action: "SWITCH_USER", userId, selectedBoard });
+    const json = await postAction({
+      action: "SWITCH_USER",
+      userId,
+      selectedBoard,
+    });
+    if (!selectedBoard && json?.activeUser) {
+      const role = json.activeUser.role;
+      if (role === "PARENT") router.push("/parent");
+      else if (role === "ADMIN") router.push("/admin");
+      else router.push("/dashboard");
+    }
   };
 
   const simulateDiagnostic = async () => {
@@ -164,18 +308,29 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
     return json.latestSubmittedAttempt as AssessmentAttempt | undefined;
   };
 
-  const purchaseProduct = async (productId: string, buyerEmail?: string) => {
+  const purchaseProduct = async (
+    productId: string,
+    buyerEmail?: string,
+    studentFirstName?: string,
+    studentLastName?: string,
+    couponCode?: string
+  ) => {
     await postAction({
       action: "PURCHASE_PRODUCT",
       productId,
       buyerEmail,
+      studentFirstName,
+      studentLastName,
+      couponCode,
     });
+    router.push("/dashboard");
   };
 
   const generateAiDraft = async (params: {
     topicId: string;
     calculatorPolicy: "NON_CALCULATOR" | "CALCULATOR_ALLOWED";
     targetGrade: number;
+    autoPublishForPractice?: boolean;
   }) => {
     const json = await postAction({
       action: "GENERATE_AI_DRAFT",
@@ -197,14 +352,25 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
 
   const resetDemo = async () => {
     await postAction({ action: "RESET_DEMO" });
+    router.push("/");
   };
+
+  const isAuthenticated = Boolean(data.activeUser);
 
   return (
     <PlatformContext.Provider
       value={{
         loading,
+        isAuthenticated,
         ...data,
         openCheckout,
+        openAuth,
+        authenticateUser,
+        requestEmailCode,
+        verifyEmailCode,
+        linkStudent,
+        createCoupon,
+        signOut,
         switchUser,
         simulateDiagnostic,
         submitAssessment,
@@ -215,25 +381,41 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
         refresh: fetchState,
       }}
     >
-      <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
+      <div className="min-h-screen flex flex-col bg-[#FAF9F5] text-[#141413]">
         <TopNavBar
           activeUser={data.activeUser}
           users={data.users}
           entitlements={data.entitlements}
           onSwitchUser={switchUser}
+          onSignOut={signOut}
+          onOpenAuth={openAuth}
           onOpenCheckout={() => openCheckout("prod-gcse-maths-grade4-pack")}
           onResetDemo={resetDemo}
         />
         <main className="flex-1">{children}</main>
+        <Footer />
+        <AuthModal
+          isOpen={authOpen}
+          initialMode={authMode}
+          onClose={() => setAuthOpen(false)}
+          demoUsers={data.users}
+          onQuickSwitchUser={async (userId) => {
+            await switchUser(userId);
+          }}
+          onRequestEmailCode={requestEmailCode}
+          onVerifyEmailCode={verifyEmailCode}
+        />
         <CheckoutModal
           isOpen={checkoutOpen}
           onClose={() => setCheckoutOpen(false)}
           products={data.products}
+          coupons={data.coupons}
           initialProductId={checkoutProductId}
+          isAuthenticated={isAuthenticated}
           studentName={
-            data.targetStudent
-              ? `${data.targetStudent.firstName} ${data.targetStudent.lastName || ""}`
-              : "Leo Carter"
+            data.activeUser
+              ? `${data.activeUser.firstName} ${data.activeUser.lastName || ""}`.trim()
+              : "Student"
           }
           parentInviteCode={data.targetStudent?.parentInviteCode}
           hasFullPack={data.entitlements.hasFullPack}
@@ -252,4 +434,3 @@ export function usePlatform() {
   }
   return ctx;
 }
-

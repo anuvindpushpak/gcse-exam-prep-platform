@@ -3,9 +3,9 @@ import "./globals.css";
 import { PlatformProvider } from "@/components/providers/PlatformProvider";
 
 export const metadata: Metadata = {
-  title: "GradeFour — GCSE Mathematics Examination Preparation",
+  title: "Examora — Structured Digital Examination Preparation",
   description:
-    "A calm, structured digital examination preparation system for GCSE Mathematics. Diagnose gaps, master topics with step-marked practice, and sit realistic mock examinations.",
+    "A calm, structured digital examination preparation platform. Diagnose syllabus gaps, master topics with step-marked practice, and achieve your target examination grades.",
 };
 
 export default function RootLayout({

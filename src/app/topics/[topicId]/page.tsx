@@ -32,8 +32,11 @@ export default function TopicLearningAndPracticePage({
     assessmentTemplates,
     entitlements,
     openCheckout,
+    generateAiDraft,
     submitAssessment,
   } = usePlatform();
+
+  const [generatingVariation, setGeneratingVariation] = useState(false);
 
   const currentTopic = topics.find((t) => t.id === topicId) || topics[0];
   const resource = learningResources.find(
@@ -401,14 +404,45 @@ export default function TopicLearningAndPracticePage({
               })}
             </div>
 
-            {practiceTemplate && isTopicUnlocked && (
-              <Link
-                href={`/exam/${practiceTemplate.id}`}
-                className="text-xs font-semibold text-[#0F4C3A] hover:underline"
-              >
-                Switch to Timed Exam Room →
-              </Link>
-            )}
+            <div className="flex flex-wrap items-center gap-4">
+              {isTopicUnlocked && (
+                <button
+                  type="button"
+                  disabled={generatingVariation}
+                  onClick={async () => {
+                    setGeneratingVariation(true);
+                    try {
+                      await generateAiDraft({
+                        topicId: currentTopic.id,
+                        calculatorPolicy: "NON_CALCULATOR",
+                        targetGrade: 4,
+                        autoPublishForPractice: true,
+                      });
+                      setQIndex(0);
+                    } finally {
+                      setGeneratingVariation(false);
+                    }
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-[#0F4C3A] bg-white px-4 py-2 text-xs font-semibold text-[#0F4C3A] hover:bg-[#E6F0EC] disabled:opacity-50 transition-colors"
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  <span>
+                    {generatingVariation
+                      ? "Generating Variation..."
+                      : "Generate Fresh Numbers"}
+                  </span>
+                </button>
+              )}
+
+              {practiceTemplate && isTopicUnlocked && (
+                <Link
+                  href={`/exam/${practiceTemplate.id}`}
+                  className="text-xs font-semibold text-[#0F4C3A] hover:underline"
+                >
+                  Switch to Timed Exam Room →
+                </Link>
+              )}
+            </div>
           </div>
 
           {/* Focused Question Card */}

@@ -381,6 +381,15 @@ export interface ProductCatalogItem {
   features: string[];
 }
 
+export interface CouponRule {
+  code: string;
+  discountPercent: number; // 1 to 100
+  description: string;
+  active: boolean;
+  redemptionsCount: number;
+  maxRedemptions?: number;
+}
+
 export interface PurchaseRecord {
   id: string;
   buyerUserId: string;
@@ -389,6 +398,9 @@ export interface PurchaseRecord {
   productId: string;
   productName: string;
   amountPence: number;
+  originalAmountPence?: number;
+  couponCode?: string;
+  discountPercent?: number;
   status: "COMPLETED" | "CANCELLED";
   createdAt: string;
 }

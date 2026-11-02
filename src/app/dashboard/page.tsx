@@ -4,29 +4,77 @@ import React, { useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
+  CheckCircle2,
   Clock,
   Lock,
+  RotateCcw,
   Sparkles,
 } from "lucide-react";
 import { usePlatform } from "@/components/providers/PlatformProvider";
+import { gradeQuestionResponse } from "@/lib/engine/grader";
 
 export default function StudentDashboardPage() {
   const {
+    isAuthenticated,
     activeUser,
     targetStudent,
+    specifications,
     topics,
+    questions,
     assessmentTemplates,
     attempts,
     entitlements,
     intelligenceProfile,
     openCheckout,
+    openAuth,
     simulateDiagnostic,
   } = usePlatform();
 
   const [simulating, setSimulating] = useState(false);
   const [activeSection, setActiveSection] = useState<
-    "PATHWAY" | "MASTERY" | "EXAMS"
+    "PATHWAY" | "MASTERY" | "EXAMS" | "MISTAKES"
   >("PATHWAY");
+  const [retryInputs, setRetryInputs] = useState<
+    Record<string, { working: string; final: string }>
+  >({});
+  const [retryGrades, setRetryGrades] = useState<
+    Record<string, ReturnType<typeof gradeQuestionResponse>>
+  >({});
+
+  if (!isAuthenticated) {
+    return (
+      <div className="mx-auto max-w-2xl px-6 py-20 text-center space-y-6">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-[#E8E4DB] bg-white text-[#0F4C3A]">
+          <Lock className="h-5 w-5" />
+        </div>
+        <h1 className="font-serif text-3xl sm:text-4xl font-medium text-[#141413]">
+          Sign in to access your Student Hub.
+        </h1>
+        <p className="text-base text-[#57554F] leading-relaxed">
+          Your personalised Grade 4 study pathway, syllabus mastery matrix, and
+          mock examination history are available to registered students. Sign in
+          below or enrol in the GCSE Mathematics Grade 4 Preparation Pack.
+        </p>
+        <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
+          <button
+            type="button"
+            onClick={() => openAuth("SIGN_IN")}
+            className="rounded-full bg-[#141413] px-7 py-3.5 text-xs font-semibold text-white hover:bg-[#2C2C2A] transition-colors"
+          >
+            Sign In to Your Account
+          </button>
+          <button
+            type="button"
+            onClick={() => openCheckout("prod-gcse-maths-grade4-pack")}
+            className="inline-flex items-center gap-2 rounded-full bg-[#0F4C3A] px-7 py-3.5 text-xs font-semibold text-white shadow-sm hover:bg-[#0B382B] transition-colors"
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            <span>Enrol in Grade 4 Pack · £39.99</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const handleSimulateDiagnostic = async () => {
     setSimulating(true);
@@ -42,7 +90,50 @@ export default function StudentDashboardPage() {
     (t) => t.mode === "WEEKLY_CHALLENGE"
   );
 
+  const selectedBoardCode =
+    targetStudent?.selectedBoard || activeUser?.selectedBoard || "EDEXCEL";
+  const activeSpec =
+    specifications.find((s) => s.boardCode === selectedBoardCode) ||
+    specifications[0];
+  const passBenchmark = activeSpec?.grade4PassPercentage || 62;
+
   const readiness = intelligenceProfile?.overallReadinessScore || 0;
+
+  // Extract unique missed or partially credited questions across all attempts for the Mistake Bank
+  const mistakeItems = React.useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        questionId: string;
+        attemptTitle: string;
+        previousWorking?: string;
+        previousAnswer: string;
+        marksAwarded: number;
+        maxMarks: number;
+        feedbackSummary: string;
+      }
+    >();
+
+    for (const att of attempts) {
+      for (const resp of Object.values(att.responses || {})) {
+        if (resp.grading && resp.grading.marksAwarded < resp.grading.maxMarks) {
+          const stepsJoined = Object.values(resp.studentSteps || {})
+            .filter(Boolean)
+            .join("; ");
+          map.set(resp.questionId, {
+            questionId: resp.questionId,
+            attemptTitle: att.templateTitle,
+            previousWorking: stepsJoined || undefined,
+            previousAnswer: resp.studentFinalAnswer,
+            marksAwarded: resp.grading.marksAwarded,
+            maxMarks: resp.grading.maxMarks,
+            feedbackSummary: resp.grading.overallFeedback,
+          });
+        }
+      }
+    }
+    return Array.from(map.values());
+  }, [attempts]);
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-12 sm:py-16 space-y-12">
@@ -50,18 +141,30 @@ export default function StudentDashboardPage() {
       <section className="rounded-3xl border border-[#E8E4DB] bg-white p-8 sm:p-10 shadow-sm space-y-8">
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
           <div className="space-y-3 max-w-2xl">
-            <div className="text-xs font-semibold uppercase tracking-widest text-[#0F4C3A]">
-              {targetStudent?.selectedBoard || "Edexcel"} GCSE Mathematics ·
-              Foundation Tier
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-xs font-semibold uppercase tracking-widest text-[#0F4C3A]">
+                {activeSpec
+                  ? `${activeSpec.name} (${activeSpec.specCode})`
+                  : `${selectedBoardCode} GCSE Mathematics`}{" "}
+                · Foundation Tier
+              </span>
+              {targetStudent?.parentInviteCode && (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-[#E8E4DB] bg-[#FAF9F5] px-3 py-0.5 text-[11px] font-medium text-[#57554F]">
+                  <span>Parent Link Code:</span>
+                  <strong className="font-mono text-[#0F4C3A]">
+                    {targetStudent.parentInviteCode}
+                  </strong>
+                </span>
+              )}
             </div>
             <h1 className="font-serif text-3xl sm:text-4xl font-medium text-[#141413]">
               Good afternoon,{" "}
-              {targetStudent?.firstName || activeUser?.firstName || "Leo"}.
+              {targetStudent?.firstName || activeUser?.firstName || "Student"}.
             </h1>
             <p className="text-base text-[#57554F] leading-relaxed">
               {attempts.length === 0
                 ? "Your preparation profile is ready. Begin with the 12-question Baseline Diagnostic Assessment so we can map your strengths and build your personalised Grade 4 study sequence."
-                : `You have completed ${attempts.length} assessment session(s). Your current readiness is ${readiness}% against the 62% Grade 4 pass benchmark.`}
+                : `You have completed ${attempts.length} assessment session(s). Your current readiness is ${readiness}% against the ${passBenchmark}% ${activeSpec?.boardCode || "GCSE"} Grade 4 pass benchmark.`}
             </p>
           </div>
 
@@ -74,18 +177,20 @@ export default function StudentDashboardPage() {
                 <span>Start Free Diagnostic</span>
                 <ArrowRight className="h-4 w-4" />
               </Link>
-              <button
-                type="button"
-                onClick={handleSimulateDiagnostic}
-                disabled={simulating}
-                className="rounded-full border border-[#D5CFC2] bg-[#FAF9F5] px-5 py-3.5 text-xs font-semibold text-[#3D3B37] hover:border-[#141413]"
-              >
-                {simulating
-                  ? "Generating..."
-                  : "Simulate Diagnostic (48% Sample)"}
-              </button>
+              {activeUser?.id === "user-student-leo" && (
+                <button
+                  type="button"
+                  onClick={handleSimulateDiagnostic}
+                  disabled={simulating}
+                  className="rounded-full border border-[#D5CFC2] bg-[#FAF9F5] px-5 py-3.5 text-xs font-semibold text-[#3D3B37] hover:border-[#141413]"
+                >
+                  {simulating
+                    ? "Generating..."
+                    : "Simulate Diagnostic (48% Sample)"}
+                </button>
+              )}
             </div>
-          ) : (
+          ) : activeUser?.id === "user-student-leo" ? (
             <button
               type="button"
               onClick={handleSimulateDiagnostic}
@@ -94,7 +199,7 @@ export default function StudentDashboardPage() {
             >
               Refresh sample diagnostic data
             </button>
-          )}
+          ) : null}
         </div>
 
         {/* Visual Grade 4 Readiness Thermometer */}
@@ -110,8 +215,8 @@ export default function StudentDashboardPage() {
             </div>
             <div className="text-xs font-medium text-[#57554F]">
               Current: <strong className="text-[#141413]">{readiness}%</strong>{" "}
-              · Grade 4 Pass Benchmark:{" "}
-              <strong className="text-[#0F4C3A]">62%</strong>
+              · {activeSpec?.boardCode || "Board"} Grade 4 Benchmark:{" "}
+              <strong className="text-[#0F4C3A]">{passBenchmark}%</strong>
             </div>
           </div>
 
@@ -120,11 +225,11 @@ export default function StudentDashboardPage() {
               className="h-full rounded-full bg-[#0F4C3A] transition-all duration-500"
               style={{ width: `${Math.max(2, readiness)}%` }}
             />
-            {/* 62% Benchmark Marker */}
+            {/* Board-Specific Benchmark Marker */}
             <div
               className="absolute top-0 bottom-0 w-0.5 bg-[#141413]"
-              style={{ left: "62%" }}
-              title="62% Grade 4 Pass Threshold"
+              style={{ left: `${passBenchmark}%` }}
+              title={`${passBenchmark}% Grade 4 Pass Threshold`}
             />
           </div>
 
@@ -194,13 +299,17 @@ export default function StudentDashboardPage() {
       )}
 
       {/* Clean Editorial Section Switcher (Progressive Disclosure) */}
-      <div className="border-b border-[#E8E4DB] flex items-center gap-8">
+      <div className="border-b border-[#E8E4DB] flex flex-wrap items-center gap-8">
         {[
           { id: "PATHWAY", label: "1. Recommended Pathway" },
           { id: "MASTERY", label: "2. Syllabus Mastery (6 Domains)" },
           {
             id: "EXAMS",
             label: `3. Mock Exams & History (${attempts.length})`,
+          },
+          {
+            id: "MISTAKES",
+            label: `4. Mistake Journal & Retry (${mistakeItems.length})`,
           },
         ].map((tab) => {
           const active = activeSection === tab.id;
@@ -209,7 +318,9 @@ export default function StudentDashboardPage() {
               key={tab.id}
               type="button"
               onClick={() =>
-                setActiveSection(tab.id as "PATHWAY" | "MASTERY" | "EXAMS")
+                setActiveSection(
+                  tab.id as "PATHWAY" | "MASTERY" | "EXAMS" | "MISTAKES"
+                )
               }
               className={`pb-4 text-sm transition-colors ${
                 active
@@ -579,6 +690,210 @@ export default function StudentDashboardPage() {
                   </tbody>
                 </table>
               </div>
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* VIEW 4: MISTAKE JOURNAL & SPACED RETRY */}
+      {activeSection === "MISTAKES" && (
+        <section className="space-y-6">
+          <div className="max-w-2xl">
+            <h2 className="font-serif text-2xl font-medium text-[#141413]">
+              Mistake Journal & Spaced Retry
+            </h2>
+            <p className="text-sm text-[#57554F] mt-1">
+              Every question where you dropped method or accuracy marks across
+              your assessments is collected here. Retry them step-by-step to
+              convert lost marks into Grade 4 security.
+            </p>
+          </div>
+
+          {mistakeItems.length === 0 ? (
+            <div className="rounded-3xl border border-[#E8E4DB] bg-white p-10 text-center space-y-4">
+              <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-[#E6F0EC] text-[#0F4C3A]">
+                <CheckCircle2 className="h-5 w-5" />
+              </div>
+              <h3 className="font-serif text-xl font-medium text-[#141413]">
+                {attempts.length === 0
+                  ? "No assessment attempts recorded yet."
+                  : "Zero unresolved mistakes in your journal."}
+              </h3>
+              <p className="text-sm text-[#57554F] max-w-md mx-auto">
+                {attempts.length === 0
+                  ? "Complete the 12-question Baseline Diagnostic Assessment first so we can log any dropped marks here for targeted retry."
+                  : "You achieved full marks on all recorded assessment questions."}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {mistakeItems.map((item) => {
+                const q = questions.find((qu) => qu.id === item.questionId);
+                if (!q) return null;
+                const topic = topics.find((t) => t.id === q.topicId);
+                const retryInput = retryInputs[q.id] || {
+                  working: "",
+                  final: "",
+                };
+                const retryResult = retryGrades[q.id];
+
+                return (
+                  <div
+                    key={item.questionId}
+                    className="rounded-3xl border border-[#E8E4DB] bg-white p-7 sm:p-8 shadow-sm space-y-6"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E8E4DB] pb-4 text-xs">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <span className="font-mono font-semibold text-[#0F4C3A]">
+                          {topic?.code || "GCSE"} · {topic?.name || "Topic"}
+                        </span>
+                        <span className="text-[#6E6B64]">
+                          From: {item.attemptTitle}
+                        </span>
+                      </div>
+                      <span className="rounded-full bg-amber-50 border border-amber-200 px-3 py-1 font-semibold text-amber-900">
+                        Previous Score: {item.marksAwarded} / {item.maxMarks}{" "}
+                        marks
+                      </span>
+                    </div>
+
+                    <div className="space-y-3">
+                      <h3 className="font-serif text-lg sm:text-xl font-medium text-[#141413]">
+                        {q.stemMarkdown}
+                      </h3>
+                      <div className="rounded-2xl bg-[#FAF9F5] border border-[#E8E4DB] p-4 text-xs text-[#57554F] space-y-1.5">
+                        <div>
+                          <strong className="text-[#141413]">
+                            Your Previous Answer:
+                          </strong>{" "}
+                          <span className="font-mono">
+                            {item.previousAnswer || "(Blank)"}
+                          </span>
+                          {item.previousWorking ? (
+                            <span className="text-[#6E6B64]">
+                              {" "}
+                              · Working: {item.previousWorking}
+                            </span>
+                          ) : null}
+                        </div>
+                        <div>
+                          <strong className="text-[#141413]">
+                            Examiner Diagnosis:
+                          </strong>{" "}
+                          {item.feedbackSummary}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Inline Spaced Retry Box */}
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 pt-2 items-end">
+                      <div className="md:col-span-6">
+                        <label className="block text-xs font-semibold text-[#141413] mb-1.5">
+                          Retry Method / Working (M1 Credit)
+                        </label>
+                        <input
+                          type="text"
+                          value={retryInput.working}
+                          onChange={(e) =>
+                            setRetryInputs((prev) => ({
+                              ...prev,
+                              [q.id]: {
+                                ...retryInput,
+                                working: e.target.value,
+                              },
+                            }))
+                          }
+                          placeholder="Show your calculation step..."
+                          className="w-full rounded-xl border border-[#D5CFC2] bg-[#FAF9F5] px-3.5 py-2.5 text-sm font-mono text-[#141413] focus:border-[#0F4C3A] focus:bg-white focus:outline-none"
+                        />
+                      </div>
+                      <div className="md:col-span-3">
+                        <label className="block text-xs font-semibold text-[#141413] mb-1.5">
+                          Final Answer (A1)
+                        </label>
+                        <div className="flex items-center gap-2">
+                          {q.answerPrefix && (
+                            <span className="text-sm font-mono text-[#57554F]">
+                              {q.answerPrefix}
+                            </span>
+                          )}
+                          <input
+                            type="text"
+                            value={retryInput.final}
+                            onChange={(e) =>
+                              setRetryInputs((prev) => ({
+                                ...prev,
+                                [q.id]: {
+                                  ...retryInput,
+                                  final: e.target.value,
+                                },
+                              }))
+                            }
+                            placeholder="Answer"
+                            className="w-full rounded-xl border border-[#D5CFC2] bg-[#FAF9F5] px-3.5 py-2.5 text-sm font-mono text-[#141413] focus:border-[#0F4C3A] focus:bg-white focus:outline-none"
+                          />
+                          {q.answerUnit && (
+                            <span className="text-sm font-mono text-[#57554F]">
+                              {q.answerUnit}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="md:col-span-3 flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const firstStepId =
+                              q.markScheme.workingSteps[0]?.id;
+                            const stepMap: Record<string, string> = firstStepId
+                              ? { [firstStepId]: retryInput.working }
+                              : {};
+                            const res = gradeQuestionResponse(
+                              q,
+                              retryInput.final,
+                              stepMap
+                            );
+                            setRetryGrades((prev) => ({
+                              ...prev,
+                              [q.id]: res,
+                            }));
+                          }}
+                          className="w-full inline-flex items-center justify-center gap-1.5 rounded-full bg-[#0F4C3A] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[#0B382B] transition-colors"
+                        >
+                          <RotateCcw className="h-3.5 w-3.5" />
+                          <span>Check Retry</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {retryResult && (
+                      <div
+                        className={`rounded-2xl border p-4 text-xs space-y-2 ${
+                          retryResult.isFullyCorrect
+                            ? "border-[#0F4C3A]/30 bg-[#E6F0EC]/60 text-[#141413]"
+                            : "border-amber-300 bg-amber-50/70 text-[#141413]"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between font-semibold">
+                          <span className="text-[#0F4C3A]">
+                            Retry Score: {retryResult.marksAwarded} /{" "}
+                            {retryResult.maxMarks} marks
+                          </span>
+                          <Link
+                            href={`/topics/${q.topicId}`}
+                            className="underline underline-offset-4 text-[#0F4C3A]"
+                          >
+                            Open Topic Study Guide →
+                          </Link>
+                        </div>
+                        <p className="text-[#3D3B37]">
+                          {retryResult.overallFeedback}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </section>

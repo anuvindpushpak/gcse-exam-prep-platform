@@ -8,27 +8,38 @@ import {
   Share2,
   ShieldCheck,
   Sparkles,
+  Tag,
   X,
 } from "lucide-react";
-import { ProductCatalogItem } from "@/types/platform";
+import { CouponRule, ProductCatalogItem } from "@/types/platform";
 
 interface CheckoutModalProps {
   isOpen: boolean;
   onClose: () => void;
   products: ProductCatalogItem[];
+  coupons?: CouponRule[];
   initialProductId?: string;
+  isAuthenticated?: boolean;
   studentName: string;
   parentInviteCode?: string;
   hasFullPack: boolean;
   hasWeeklyMembership: boolean;
-  onPurchaseSuccess: (productId: string, buyerEmail: string) => Promise<void>;
+  onPurchaseSuccess: (
+    productId: string,
+    buyerEmail: string,
+    studentFirstName?: string,
+    studentLastName?: string,
+    couponCode?: string
+  ) => Promise<void>;
 }
 
 export function CheckoutModal({
   isOpen,
   onClose,
   products,
+  coupons = [],
   initialProductId = "prod-gcse-maths-grade4-pack",
+  isAuthenticated = false,
   studentName,
   parentInviteCode = "PARENT-LEO-2027",
   hasFullPack,
@@ -36,8 +47,13 @@ export function CheckoutModal({
   onPurchaseSuccess,
 }: CheckoutModalProps) {
   const [selectedId, setSelectedId] = useState(initialProductId);
-  const [buyerEmail, setBuyerEmail] = useState("parent@demo.uk");
-  const [cardHolder, setCardHolder] = useState("Sarah Carter");
+  const [studentFirstName, setStudentFirstName] = useState("");
+  const [studentLastName, setStudentLastName] = useState("");
+  const [buyerEmail, setBuyerEmail] = useState("");
+  const [cardHolder, setCardHolder] = useState("");
+  const [couponInput, setCouponInput] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<CouponRule | null>(null);
+  const [couponError, setCouponError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [copiedParentLink, setCopiedParentLink] = useState(false);
 
@@ -46,11 +62,44 @@ export function CheckoutModal({
   const selectedProduct =
     products.find((p) => p.id === selectedId) || products[0];
 
+  const discountPercent = appliedCoupon ? appliedCoupon.discountPercent : 0;
+  const originalPence = selectedProduct?.pricePence || 3999;
+  const finalPence = Math.max(
+    0,
+    Math.round(originalPence * (1 - discountPercent / 100))
+  );
+  const formattedFinalPrice = `£${(finalPence / 100).toFixed(2)}`;
+  const isFreeWithCoupon = finalPence === 0;
+
+  const handleApplyCoupon = () => {
+    setCouponError(null);
+    const clean = couponInput.trim().toUpperCase();
+    if (!clean) {
+      setAppliedCoupon(null);
+      return;
+    }
+    const match = coupons.find(
+      (c) => c.code.toUpperCase() === clean && c.active
+    );
+    if (!match) {
+      setAppliedCoupon(null);
+      setCouponError("Coupon code not recognised or expired.");
+      return;
+    }
+    setAppliedCoupon(match);
+  };
+
   const handleCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsProcessing(true);
     try {
-      await onPurchaseSuccess(selectedProduct.id, buyerEmail);
+      await onPurchaseSuccess(
+        selectedProduct.id,
+        buyerEmail || "student@demo.uk",
+        studentFirstName || "Student",
+        studentLastName || "",
+        appliedCoupon?.code
+      );
       onClose();
     } finally {
       setIsProcessing(false);
@@ -61,7 +110,7 @@ export function CheckoutModal({
     const url =
       typeof window !== "undefined"
         ? `${window.location.origin}/parent?unlock=${selectedProduct.id}&invite=${parentInviteCode}`
-        : `https://grade4maths.uk/parent?invite=${parentInviteCode}`;
+        : `https://examora.co.uk/parent?invite=${parentInviteCode}`;
     if (typeof navigator !== "undefined" && navigator.clipboard) {
       navigator.clipboard.writeText(url);
     }
@@ -76,7 +125,7 @@ export function CheckoutModal({
       aria-modal="true"
       aria-labelledby="checkout-modal-title"
     >
-      <div className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-3xl bg-[#FAF9F5] border border-[#E8E4DB] shadow-2xl">
+      <div className="relative w-full max-w-3xl max-h-[92vh] overflow-y-auto rounded-3xl bg-[#FAF9F5] border border-[#E8E4DB] shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[#E8E4DB] px-7 py-5 bg-white">
           <div className="flex items-center gap-3">
@@ -88,10 +137,12 @@ export function CheckoutModal({
                 id="checkout-modal-title"
                 className="font-serif text-lg font-semibold text-[#141413]"
               >
-                Unlock GCSE Maths Grade 4 Preparation
+                Enrol in GCSE Maths Grade 4 Preparation
               </h2>
               <p className="text-xs text-[#78756E]">
-                Instant digital entitlement activation for {studentName}
+                {isAuthenticated
+                  ? `Instant digital entitlement activation for ${studentName}`
+                  : "Creates your Student Account & unlocks immediate access"}
               </p>
             </div>
           </div>
@@ -183,8 +234,11 @@ export function CheckoutModal({
                     Asking a parent or guardian to unlock?
                   </div>
                   <p className="text-[11px] text-[#575550] mt-0.5">
-                    Share your invite code ({parentInviteCode}) to link their
-                    Parent Progress Report automatically.
+                    Share your invite code{" "}
+                    <span className="font-mono font-semibold text-[#0F4C3A]">
+                      {parentInviteCode}
+                    </span>{" "}
+                    to connect their Guardian Dashboard automatically.
                   </p>
                 </div>
                 <button
@@ -199,7 +253,7 @@ export function CheckoutModal({
             </div>
           </div>
 
-          {/* Checkout Form Column */}
+          {/* Checkout Form & Coupon Column */}
           <div className="md:col-span-5">
             <form
               onSubmit={handleCheckout}
@@ -207,76 +261,185 @@ export function CheckoutModal({
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold uppercase tracking-widest text-[#78756E]">
-                  2. Express Checkout
+                  2. Account, Coupon & Payment
                 </span>
                 <Lock className="h-4 w-4 text-[#78756E]" />
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-[#575550] mb-1.5">
-                  Parent / Buyer Email
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={buyerEmail}
-                  onChange={(e) => setBuyerEmail(e.target.value)}
-                  className="w-full rounded-xl border border-[#E8E4DB] bg-[#FAF9F5] px-3.5 py-2.5 text-sm text-[#141413] focus:border-[#0F4C3A] focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-[#575550] mb-1.5">
-                  Cardholder Name
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={cardHolder}
-                  onChange={(e) => setCardHolder(e.target.value)}
-                  className="w-full rounded-xl border border-[#E8E4DB] bg-[#FAF9F5] px-3.5 py-2.5 text-sm text-[#141413] focus:border-[#0F4C3A] focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-[#575550] mb-1.5">
-                  Card Details (Sandbox Demonstration)
-                </label>
-                <div className="flex items-center gap-2 rounded-xl border border-[#E8E4DB] bg-[#FAF9F5] px-3.5 py-2.5 text-sm text-[#141413] font-mono">
-                  <CreditCard className="h-4 w-4 text-[#78756E] shrink-0" />
-                  <span>•••• •••• •••• 4242</span>
-                  <span className="ml-auto text-xs text-[#78756E]">11/29</span>
+              {!isAuthenticated && (
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block text-xs font-semibold text-[#575550] mb-1">
+                      Student First Name
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={studentFirstName}
+                      onChange={(e) => setStudentFirstName(e.target.value)}
+                      placeholder="e.g. Oliver"
+                      className="w-full rounded-xl border border-[#E8E4DB] bg-[#FAF9F5] px-3 py-2 text-sm text-[#141413] focus:border-[#0F4C3A] focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#575550] mb-1">
+                      Last Name
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={studentLastName}
+                      onChange={(e) => setStudentLastName(e.target.value)}
+                      placeholder="e.g. Bennett"
+                      className="w-full rounded-xl border border-[#E8E4DB] bg-[#FAF9F5] px-3 py-2 text-sm text-[#141413] focus:border-[#0F4C3A] focus:outline-none"
+                    />
+                  </div>
                 </div>
+              )}
+
+              {!isAuthenticated && (
+                <div>
+                  <label className="block text-xs font-semibold text-[#575550] mb-1.5">
+                    Student / Receipt Email
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={buyerEmail}
+                    onChange={(e) => setBuyerEmail(e.target.value)}
+                    placeholder="you@example.co.uk"
+                    className="w-full rounded-xl border border-[#E8E4DB] bg-[#FAF9F5] px-3.5 py-2.5 text-sm text-[#141413] focus:border-[#0F4C3A] focus:outline-none"
+                  />
+                </div>
+              )}
+
+              {/* Coupon / Early Adopter Code Input */}
+              <div className="rounded-xl border border-[#E8E4DB] bg-[#FAF9F5] p-3.5 space-y-2">
+                <label className="flex items-center justify-between text-xs font-semibold text-[#141413]">
+                  <span className="inline-flex items-center gap-1.5">
+                    <Tag className="h-3.5 w-3.5 text-[#0F4C3A]" />
+                    <span>Early Adopter / Promo Code</span>
+                  </span>
+                  {appliedCoupon && (
+                    <span className="text-[11px] font-semibold text-[#0F4C3A]">
+                      -{appliedCoupon.discountPercent}% Applied
+                    </span>
+                  )}
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={couponInput}
+                    onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                    placeholder="Enter code (e.g. EARLY100)"
+                    className="w-full rounded-lg border border-[#D5CFC2] bg-white px-3 py-1.5 text-xs font-mono uppercase text-[#141413] focus:border-[#0F4C3A] focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleApplyCoupon}
+                    className="shrink-0 rounded-lg bg-[#141413] px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-[#2C2C2A] transition-colors"
+                  >
+                    Apply
+                  </button>
+                </div>
+                {couponError && (
+                  <p className="text-[11px] text-amber-800 font-medium">
+                    {couponError}
+                  </p>
+                )}
+                {appliedCoupon && (
+                  <p className="text-[11px] text-[#0F4C3A] font-medium">
+                    ✓ {appliedCoupon.description} ({appliedCoupon.discountPercent}%
+                    discount)
+                  </p>
+                )}
               </div>
 
+              {/* Hide Card Fields if 100% Early Adopter Coupon is Applied */}
+              {!isFreeWithCoupon ? (
+                <>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#575550] mb-1.5">
+                      Cardholder Name
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={cardHolder}
+                      onChange={(e) => setCardHolder(e.target.value)}
+                      placeholder="Name on card"
+                      className="w-full rounded-xl border border-[#E8E4DB] bg-[#FAF9F5] px-3.5 py-2.5 text-sm text-[#141413] focus:border-[#0F4C3A] focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-[#575550] mb-1.5">
+                      Card Details (Sandbox Demonstration)
+                    </label>
+                    <div className="flex items-center gap-2 rounded-xl border border-[#E8E4DB] bg-[#FAF9F5] px-3.5 py-2.5 text-sm text-[#141413] font-mono">
+                      <CreditCard className="h-4 w-4 text-[#78756E] shrink-0" />
+                      <span>•••• •••• •••• 4242</span>
+                      <span className="ml-auto text-xs text-[#78756E]">
+                        11/29
+                      </span>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="rounded-xl border border-[#0F4C3A]/30 bg-[#E6F0EC]/70 p-3.5 text-xs text-[#0F4C3A] font-medium">
+                  100% Early Adopter Scholarship applied — no credit card
+                  required.
+                </div>
+              )}
+
+              {/* Order Breakdown */}
               <div className="rounded-xl bg-[#FAF9F5] border border-[#E8E4DB] p-3.5 space-y-1.5 text-xs">
                 <div className="flex justify-between text-[#575550]">
                   <span>Student Account:</span>
                   <span className="font-semibold text-[#141413]">
-                    {studentName}
+                    {isAuthenticated
+                      ? studentName
+                      : `${studentFirstName || "New"} ${studentLastName || "Student"}`.trim()}
                   </span>
                 </div>
-                <div className="flex justify-between border-t border-[#E8E4DB] pt-2 font-semibold text-[#141413] text-sm">
-                  <span>Total Due:</span>
-                  <span className="font-serif">{selectedProduct.priceFormatted}</span>
+                <div className="flex justify-between text-[#575550]">
+                  <span>Standard Price:</span>
+                  <span
+                    className={
+                      discountPercent > 0 ? "line-through text-[#969289]" : ""
+                    }
+                  >
+                    {selectedProduct.priceFormatted}
+                  </span>
+                </div>
+                {discountPercent > 0 && (
+                  <div className="flex justify-between text-[#0F4C3A] font-semibold">
+                    <span>Coupon ({appliedCoupon?.code}):</span>
+                    <span>-{discountPercent}%</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-[#141413] font-semibold border-t border-[#E8E4DB] pt-1.5">
+                  <span>Total Payable Today:</span>
+                  <span className="font-serif text-base text-[#0F4C3A]">
+                    {formattedFinalPrice}
+                  </span>
                 </div>
               </div>
 
               <button
                 type="submit"
                 disabled={isProcessing}
-                className="w-full flex items-center justify-center gap-2 rounded-full bg-[#0F4C3A] px-5 py-3.5 text-sm font-semibold text-white shadow-sm hover:bg-[#19634D] disabled:opacity-50 transition-all"
+                className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#0F4C3A] px-5 py-3.5 text-sm font-semibold text-white shadow-sm hover:bg-[#19634D] disabled:opacity-50 transition-all"
               >
                 <Sparkles className="h-4 w-4" />
-                {isProcessing
-                  ? "Activating Entitlement..."
-                  : `Unlock for ${selectedProduct.priceFormatted}`}
+                <span>
+                  {isProcessing
+                    ? "Activating Access..."
+                    : isFreeWithCoupon
+                    ? "Activate Free Early Adopter Access (£0.00)"
+                    : `Pay ${formattedFinalPrice} & Unlock Immediately`}
+                </span>
               </button>
-
-              <p className="text-[11px] text-center text-[#78756E] leading-relaxed">
-                UK GDPR & ICO Children&apos;s Code compliant · Instant access to
-                all 6 syllabus modules and 3 full mock papers.
-              </p>
             </form>
           </div>
         </div>

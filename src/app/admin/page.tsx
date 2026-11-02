@@ -6,6 +6,7 @@ import {
   Cpu,
   FileCheck2,
   Sparkles,
+  Tag,
   Trash2,
 } from "lucide-react";
 import { MathText } from "@/components/math/MathText";
@@ -13,10 +14,15 @@ import { usePlatform } from "@/components/providers/PlatformProvider";
 
 export default function AdminAndAiGovernancePage() {
   const {
+    isAuthenticated,
+    users,
     specifications,
     topics,
     questions,
     products,
+    coupons,
+    openAuth,
+    createCoupon,
     generateAiDraft,
     updateQuestionStatus,
   } = usePlatform();
@@ -28,6 +34,37 @@ export default function AdminAndAiGovernancePage() {
   const [targetGrade, setTargetGrade] = useState(4);
   const [generating, setGenerating] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
+
+  const [newCouponCode, setNewCouponCode] = useState("");
+  const [newCouponDiscount, setNewCouponDiscount] = useState(100);
+  const [newCouponDesc, setNewCouponDesc] = useState("");
+  const [creatingCoupon, setCreatingCoupon] = useState(false);
+
+  if (!isAuthenticated) {
+    return (
+      <div className="mx-auto max-w-2xl px-6 py-20 text-center space-y-6">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-[#E8E4DB] bg-white text-[#0F4C3A]">
+          <Cpu className="h-5 w-5" />
+        </div>
+        <h1 className="font-serif text-3xl sm:text-4xl font-medium text-[#141413]">
+          Curator & AI Governance Studio
+        </h1>
+        <p className="text-base text-[#57554F] leading-relaxed">
+          Specialist authentication is required to access the curriculum CMS and
+          symbolic validation review queue.
+        </p>
+        <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
+          <button
+            type="button"
+            onClick={() => openAuth("SIGN_IN")}
+            className="rounded-full bg-[#0F4C3A] px-7 py-3.5 text-xs font-semibold text-white hover:bg-[#0B382B] transition-colors"
+          >
+            Sign In to Curator Studio
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const handleGenerateQuestion = async () => {
     setGenerating(true);
@@ -365,6 +402,140 @@ export default function AdminAndAiGovernancePage() {
                 <div className="text-[#575550]">
                   Scope: {pr.entitlementScope} · Model: {pr.type}
                 </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Early Adopter Coupon Engine & Captured Client Accounts */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="lg:col-span-7 rounded-3xl border border-[#E8E4DB] bg-white p-8 shadow-sm space-y-5">
+          <div className="flex items-center justify-between border-b border-[#E8E4DB] pb-4">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-[#0F4C3A]">
+              <Tag className="h-4 w-4" />
+              <span>Early Adopter Coupons & Scholarships (Up to 100% Off)</span>
+            </div>
+            <span className="text-xs text-[#6E6B64]">
+              {coupons.length} Active Codes
+            </span>
+          </div>
+
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              if (!newCouponCode.trim()) return;
+              setCreatingCoupon(true);
+              try {
+                await createCoupon({
+                  code: newCouponCode,
+                  discountPercent: newCouponDiscount,
+                  description: newCouponDesc,
+                });
+                setNewCouponCode("");
+                setNewCouponDesc("");
+              } finally {
+                setCreatingCoupon(false);
+              }
+            }}
+            className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end bg-[#FAF9F5] p-4 rounded-2xl border border-[#E8E4DB]"
+          >
+            <div className="sm:col-span-4">
+              <label className="block text-[11px] font-semibold text-[#575550] mb-1">
+                Coupon Code
+              </label>
+              <input
+                type="text"
+                required
+                value={newCouponCode}
+                onChange={(e) => setNewCouponCode(e.target.value.toUpperCase())}
+                placeholder="e.g. VIP100"
+                className="w-full rounded-xl border border-[#D5CFC2] bg-white px-3 py-2 text-xs font-mono uppercase text-[#141413]"
+              />
+            </div>
+            <div className="sm:col-span-3">
+              <label className="block text-[11px] font-semibold text-[#575550] mb-1">
+                Discount %
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={100}
+                required
+                value={newCouponDiscount}
+                onChange={(e) => setNewCouponDiscount(Number(e.target.value))}
+                className="w-full rounded-xl border border-[#D5CFC2] bg-white px-3 py-2 text-xs font-mono text-[#141413]"
+              />
+            </div>
+            <div className="sm:col-span-5 flex items-center gap-2">
+              <input
+                type="text"
+                value={newCouponDesc}
+                onChange={(e) => setNewCouponDesc(e.target.value)}
+                placeholder="Description"
+                className="w-full rounded-xl border border-[#D5CFC2] bg-white px-3 py-2 text-xs text-[#141413]"
+              />
+              <button
+                type="submit"
+                disabled={creatingCoupon}
+                className="shrink-0 rounded-xl bg-[#0F4C3A] px-4 py-2 text-xs font-semibold text-white hover:bg-[#0B382B]"
+              >
+                Save
+              </button>
+            </div>
+          </form>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {coupons.map((c) => (
+              <div
+                key={c.code}
+                className="rounded-2xl border border-[#E8E4DB] bg-[#FAF9F5] p-4 flex items-center justify-between text-xs"
+              >
+                <div>
+                  <div className="font-mono font-bold text-sm text-[#0F4C3A]">
+                    {c.code}
+                  </div>
+                  <div className="text-[#575550] mt-0.5">{c.description}</div>
+                </div>
+                <div className="text-right">
+                  <span className="rounded-full bg-[#E6F0EC] px-2.5 py-1 font-semibold text-[#0F4C3A]">
+                    {c.discountPercent}% OFF
+                  </span>
+                  <div className="text-[10px] text-[#78756E] mt-1">
+                    {c.redemptionsCount} used
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="lg:col-span-5 rounded-3xl border border-[#E8E4DB] bg-white p-8 shadow-sm space-y-4">
+          <div className="flex items-center justify-between border-b border-[#E8E4DB] pb-4">
+            <span className="text-xs font-semibold uppercase tracking-widest text-[#0F4C3A]">
+              Registered Students & Parents ({users.length})
+            </span>
+          </div>
+          <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+            {users.map((u) => (
+              <div
+                key={u.id}
+                className="rounded-2xl border border-[#E8E4DB] bg-[#FAF9F5] p-3.5 text-xs flex items-center justify-between"
+              >
+                <div>
+                  <div className="font-semibold text-[#141413]">
+                    {u.firstName} {u.lastName}
+                  </div>
+                  <div className="text-[#6E6B64]">{u.email}</div>
+                  {u.parentInviteCode && (
+                    <div className="text-[10px] font-mono text-[#0F4C3A] mt-0.5">
+                      Link Code: {u.parentInviteCode}
+                    </div>
+                  )}
+                </div>
+                <span className="rounded-full bg-white border border-[#E8E4DB] px-2.5 py-0.5 text-[10px] font-semibold text-[#3D3B37]">
+                  {u.role} · {u.selectedBoard}
+                </span>
               </div>
             ))}
           </div>
